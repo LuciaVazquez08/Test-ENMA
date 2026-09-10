@@ -1482,7 +1482,7 @@ def run_etl():
     df_2023['peso_muestral_nacionalidad'] = df_2023['weightvec_0'].astype(str).str.replace(',', '.').astype(float)
     df_2023.drop(columns=['weightvec', 'weightvec_0'], inplace=True)
 
-    #COLUMNAS SIN PAR (sin equivalente en el otro año, no armonizables)
+    #COLUMNAS SIN PAR 
     df_2020.drop(columns=[
         'documentos_i', 'edad_i', 'estudios_i', 'language', 'q14_otros',
         'q21_establecimiento_mixto', 'q21_establecimiento_privado', 'q21_establecimiento_publico',
