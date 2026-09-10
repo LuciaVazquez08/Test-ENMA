@@ -6,21 +6,6 @@ import re
 import openpyxl
 import os
 
-def normalizar_pais(valor):
-    if pd.isna(valor):
-        return np.nan
-    v = str(valor).strip()           
-    v = v.title()                   
-    return v
-
-def filtrar_pais_nacimiento(df):
-    conteo = df['pais_nacimiento'].value_counts()
-    paises_validos = conteo[conteo >= 5].index
-    df['pais_nacimiento'] = df['pais_nacimiento'].where(
-        df['pais_nacimiento'].isin(paises_validos), other='Otro'
-    )
-    return df
-
 def normalizar_idioma(valor):
     if pd.isna(valor):
         return np.nan
@@ -202,24 +187,12 @@ def run_etl():
     df_2023.drop(columns=['edad_agrup'], inplace=True)
 
     #NACIONALIDAD
-    df_2020['pais_nacimiento'] = np.where(df_2020['q3_pais'] == 'Otro (especifique)', df_2020['q3_otro'], df_2020['q3_pais'])
-    df_2020.replace({'pais_nacimiento': {'Holanda': 'Países Bajos'}}, inplace=True)
-    df_2020['pais_nacimiento'] = df_2020['pais_nacimiento'].apply(normalizar_pais)
-
-    df_2020['pais_nacimiento_var'] = df_2020['nacionalidad_c'].fillna('Otro')
-
+    top10_nacionalidades = df_2020['nacionalidad_c'].value_counts().head(10).index
+    df_2020['pais_nacimiento_var'] = df_2020['nacionalidad_c'].where(df_2020['nacionalidad_c'].isin(top10_nacionalidades)).fillna('Otro')
     df_2020.drop(columns=['q3_pais', 'q3_otro', 'nacionalidad_c'], inplace=True)
 
-    df_2023['pais_nacimiento'] = np.where(df_2023['q3_pais_nacimiento'] == 'Otro', df_2023['q3_pais_otro'], df_2023['q3_pais_nacimiento'])
-    df_2023['pais_nacimiento'] = df_2023['pais_nacimiento'].apply(normalizar_pais)
-    df_2023.replace({'pais_nacimiento': {'Usa': 'Estados Unidos', 'Ee.Uu.': 'Estados Unidos', 'Estados Unidos De América': 'Estados Unidos', 'Estados Unidos Mexicanos': 'México', 'Hondurqwy': 'Honduras', 'Eeuu': 'Estados Unidos', 'Los Estados Unidos': 'Estados Unidos', 'Hungria pero soy Venezolana': 'Hungría', 'Costa Rics': 'Costa Rica', 'Mexico': 'México', 'El salvador': 'El Salvador'}}, inplace=True)
-    
     df_2023['pais_nacimiento_var'] = df_2023['nacionalidad_var'].fillna('Otro')
-
     df_2023.drop(columns=["q3_pais_nacimiento", "q3_pais_otro", "nacionalidad_var"], inplace=True)
-
-    df_2020 = filtrar_pais_nacimiento(df_2020)
-    df_2023 = filtrar_pais_nacimiento(df_2023)
 
     #GENERO
     df_2020["genero_agrup"] = np.where(df_2020['q1_genero'] == 'Mujer', df_2020['q1_genero'], np.where(df_2020['q1_genero'] == 'Hombre', 'Varón', np.where(df_2020['q1_genero'] == 'No quiere informar', 'Prefiero no responder', 'Otro género')))

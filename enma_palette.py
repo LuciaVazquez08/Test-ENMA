@@ -68,8 +68,8 @@ def inject_fonts() -> None:
             font-family: {FONT_BODY};
             color: {COLORS['text']};
         }}
-        h1, h2, h3 {{
-            font-family: {FONT_HEADINGS};
+        h1{{
+            font-family: {FONT_HEADINGS} !important; 
             letter-spacing: 0.02em;
             text-transform: uppercase;
         }}
