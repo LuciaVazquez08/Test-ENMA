@@ -2,9 +2,11 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-from enma_palette import CHART_SEQUENCE, FONT_BODY
+from enma_palette import CHART_SEQUENCE, COLORS, FONT_BODY
 
 DATA_PATH = "data/processed/ENMA.csv"
+
+COLOR_DETALLE = COLORS["text_3"]
 
 
 def aplicar_tipografia(fig):
@@ -32,16 +34,44 @@ def iniciar_filtros() -> "st.delta_generator.DeltaGenerator":
     return st.sidebar.empty()
 
 
-def filtro_edicion(df: pd.DataFrame, key: str) -> pd.Series:
+def filtro_edicion(df: pd.DataFrame, key: str, reset_keys: list[str] | None = None) -> pd.Series:
+    """Selector de Año. Si se pasan `reset_keys`, al cambiar de año se incrementa
+    la "versión" de esos otros widgets (p. ej. el filtro de nacionalidad). Un
+    widget de Streamlit conserva su selección en el navegador mientras
+    conserve su `key`, aunque el script borre esa entrada de session_state
+    (el propio frontend reenvía el último valor elegido en cada rerun); la
+    única forma confiable de que vuelva a mostrar todas sus opciones es
+    darle una key nueva, forzando una instancia nueva del widget. Ver
+    `version_key()`."""
     anios = sorted(df["Año"].dropna().unique())
     seleccion = st.sidebar.selectbox("Edición / Año", anios, key=key)
+    anio_previo_key = f"_{key}_anio_previo"
+    anio_previo = st.session_state.get(anio_previo_key)
+    if reset_keys and anio_previo is not None and anio_previo != seleccion:
+        for reset_key in reset_keys:
+            version_key = f"_{reset_key}_version"
+            st.session_state[version_key] = st.session_state.get(version_key, 0) + 1
+    st.session_state[anio_previo_key] = seleccion
     return df["Año"] == seleccion
 
 
-def filtro_nacionalidad(df: pd.DataFrame, key: str, mask_edicion: pd.Series) -> pd.Series:
-    opciones_df = df[mask_edicion]
-    nacionalidades = sorted(opciones_df["pais_nacimiento_var"].dropna().unique())
-    seleccion = st.sidebar.multiselect("Nacionalidad", nacionalidades, default=nacionalidades, key=key)
+def version_key(key: str) -> str:
+    """Key efectiva de un widget versionado por `filtro_edicion` (ver ahí):
+    cambia cuando se le pide resetear, lo que fuerza a Streamlit a tratarlo
+    como un widget nuevo en el navegador en vez de arrastrar la selección
+    previa."""
+    return f"{key}_{st.session_state.get(f'_{key}_version', 0)}"
+
+
+def filtro_nacionalidad(df: pd.DataFrame, key: str, df_opciones: pd.DataFrame | None = None) -> pd.Series:
+    """`df_opciones` permite calcular las opciones del multiselect sobre un
+    subconjunto (p. ej. ya filtrado por año) sin restringir el propio `df`
+    usado para armar la máscara. `key` es la key lógica del filtro; la key
+    real del widget se versiona (ver `version_key`) para poder resetearlo
+    desde `filtro_edicion`."""
+    fuente = df_opciones if df_opciones is not None else df
+    nacionalidades = sorted(fuente["pais_nacimiento_var"].dropna().unique())
+    seleccion = st.sidebar.multiselect("Nacionalidad", nacionalidades, default=nacionalidades, key=version_key(key))
     return df["pais_nacimiento_var"].isin(seleccion)
 
 
@@ -81,6 +111,9 @@ def distribucion(
     orden: list | None = None,
     columna_peso: str = "peso_muestral_total",
 ) -> pd.DataFrame:
+    """La magnitud de cada categoría se calcula como la suma del ponderador
+    `columna_peso` en lugar del conteo crudo de filas, para que el porcentaje
+    refleje la población estimada y no la composición de la muestra."""
     datos = df.dropna(subset=[columna])
     cantidad = datos.groupby(columna)[columna_peso].sum()
     porcentaje = cantidad.div(cantidad.sum()).mul(100).round(1)
@@ -119,7 +152,11 @@ def grafico_barras(
         )
         fig.update_layout(yaxis_title=None, xaxis_title="Porcentaje (%)")
         fig.update_xaxes(range=[0, data["Porcentaje"].max() * 1.18])
-        hovertemplate = "%{y}<br>Porcentaje: %{x:.1f}%<br>Personas (ponderado): %{customdata[0]:,.0f}<extra></extra>"
+        hovertemplate = (
+            "%{y}<br>Porcentaje: %{x:.1f}%<br>"
+            f"<span style='color:{COLOR_DETALLE}'>Personas (ponderado): %{{customdata[0]:,.0f}}</span>"
+            "<extra></extra>"
+        )
     else:
         fig = px.bar(
             data, x=columna, y="Porcentaje",
@@ -128,7 +165,11 @@ def grafico_barras(
         )
         fig.update_layout(xaxis_title=None, yaxis_title="Porcentaje (%)")
         fig.update_yaxes(range=[0, data["Porcentaje"].max() * 1.3])
-        hovertemplate = "%{x}<br>Porcentaje: %{y:.1f}%<br>Personas (ponderado): %{customdata[0]:,.0f}<extra></extra>"
+        hovertemplate = (
+            "%{x}<br>Porcentaje: %{y:.1f}%<br>"
+            f"<span style='color:{COLOR_DETALLE}'>Personas (ponderado): %{{customdata[0]:,.0f}}</span>"
+            "<extra></extra>"
+        )
     fig.update_traces(texttemplate="%{text}%", textposition="outside", hovertemplate=hovertemplate)
     fig.update_layout(margin=dict(t=10, b=10))
     aplicar_tipografia(fig)

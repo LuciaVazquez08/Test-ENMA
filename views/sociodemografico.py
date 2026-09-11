@@ -11,83 +11,107 @@ from data_utils import (
     iniciar_filtros,
     load_data,
 )
-from enma_palette import CHART_SEQUENCE
+from enma_palette import CHART_SEQUENCE, COLORS
 
 PERIODO_RESIDENCIA_ORDEN = ["Hasta 5 años", "Entre 5 y 9 años", "Más de 10 años"]
 
 ALTURA_GRANDE = 300
 ALTURA_CHICA = 180
 
-# Columnas de ponderador disponibles en el dataset (una por fila, ya armonizadas
-# entre ediciones). Usar PESO_NACIONALIDAD para todo gráfico que desagregue por
-# país/nacionalidad, y PESO_TOTAL para el resto.
-PESO_TOTAL = "peso_muestral_total"
+# Ponderadores muestrales: por nacionalidad (corrige la composición dentro de
+# cada país de origen) y total (corrige la composición de la población
+# migrante completa, entre países). No son intercambiables: los gráficos que
+# desagregan por país usan el primero fila por fila, y la fila de referencia
+# poblacional usa el segundo.
 PESO_NACIONALIDAD = "peso_muestral_nacionalidad"
+PESO_TOTAL = "peso_muestral_total"
+
+POBLACION_TOTAL_LABEL = "Población total"
+COLOR_DETALLE = COLORS["text_3"]
 
 
-def _tabla_ponderada(df, filas, columnas, peso):
-    """Arma el equivalente ponderado de:
-        df.groupby([filas, columnas]).size().unstack(fill_value=0)
-    sumando `peso` en vez de contar filas.
-    """
-    conteo = (
-        df.groupby([filas, columnas])[peso]
-        .sum()
-        .unstack(fill_value=0)
-    )
-    return conteo
+def _tabla_ponderada(df, index_col, columns_col, peso_pais, peso_poblacion, etiqueta_poblacion):
+    """Arma una tabla índice x columnas con los pesos muestrales sumados (no
+    conteo de filas), ordenada de menor a mayor magnitud, y agrega al final
+    una fila `etiqueta_poblacion` con la distribución de toda la población
+    filtrada (ponderada con `peso_poblacion`) como referencia. Devuelve el
+    porcentaje resultante por fila, el peso sumado (para el detalle de
+    "personas") y el orden final de categorías."""
+    pivot = df.groupby([index_col, columns_col])[peso_pais].sum().unstack(fill_value=0)
+    orden = pivot.sum(axis=1).sort_values().index.tolist()
+    pivot = pivot.loc[orden]
+
+    poblacion = df.groupby(columns_col)[peso_poblacion].sum().reindex(pivot.columns, fill_value=0)
+    pivot.loc[etiqueta_poblacion] = poblacion
+
+    orden_final = orden + [etiqueta_poblacion]
+    pivot = pivot.loc[orden_final]
+
+    tabla = pivot.div(pivot.sum(axis=1), axis=0).mul(100).round(1)
+    return tabla, pivot, orden_final
+
+
+def _ticktext_con_referencia(orden):
+    return [f"<b>{c}</b>" if c == POBLACION_TOTAL_LABEL else c for c in orden]
 
 
 def _pais_por_genero(df):
     st.subheader("País de origen")
-    # Desagrega por país -> usar peso ponderado por nacionalidad
-    conteo = _tabla_ponderada(df, "pais_nacimiento_var", "genero_agrup", PESO_NACIONALIDAD)
-    tabla = conteo.div(conteo.sum(axis=1), axis=0).mul(100).round(1)
-    orden_paises = tabla.sum(axis=1).sort_values().index
-    tabla = tabla.loc[orden_paises]
-    conteo = conteo.loc[orden_paises]
+    tabla, conteo, orden = _tabla_ponderada(
+        df, "pais_nacimiento_var", "genero_agrup", PESO_NACIONALIDAD, PESO_TOTAL, POBLACION_TOTAL_LABEL,
+    )
     data = tabla.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Género", value_name="Porcentaje")
     data_cantidad = conteo.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Género", value_name="Cantidad")
     data = data.merge(data_cantidad, on=["pais_nacimiento_var", "Género"])
     fig = px.bar(
         data, x="Porcentaje", y="pais_nacimiento_var", color="Género",
         orientation="h", barmode="stack",
+        category_orders={"pais_nacimiento_var": orden},
         color_discrete_sequence=CHART_SEQUENCE,
         text="Porcentaje", custom_data=["Cantidad"],
     )
     fig.update_traces(
         texttemplate="%{text}%", textposition="inside",
-        hovertemplate="%{y}<br>Porcentaje: %{x:.1f}%<br>Personas (ponderado): %{customdata[0]:,.0f}",
+        hovertemplate=(
+            "%{y}<br>Porcentaje: %{x:.1f}%<br>"
+            f"<span style='color:{COLOR_DETALLE}'>Personas (ponderado): %{{customdata[0]:,.0f}}</span>"
+        ),
     )
     fig.update_layout(
         yaxis_title=None, xaxis_title="Porcentaje (%)",
         margin=dict(t=10, b=10), height=ALTURA_GRANDE,
     )
     aplicar_tipografia(fig)
-    fig.update_yaxes(tickmode="linear", dtick=1, tickfont=dict(size=9))
+    fig.update_yaxes(tickmode="array", tickvals=orden, ticktext=_ticktext_con_referencia(orden), tickfont=dict(size=9))
     st.plotly_chart(fig, use_container_width=True)
+    st.caption(
+        "«Población total» pondera todo el conjunto filtrado con el peso muestral total, "
+        "como referencia frente a la distribución de género de cada nacionalidad "
+        "(ponderada con el peso muestral por nacionalidad)."
+    )
 
 
 def _descendencia_por_pais(df):
     st.subheader("Descendencia")
-    # Desagrega por país -> usar peso ponderado por nacionalidad
-    conteo = _tabla_ponderada(df, "pais_nacimiento_var", "descendencia", PESO_NACIONALIDAD)
-    tabla = conteo.div(conteo.sum(axis=1), axis=0).mul(100).round(1)
-    orden_paises = tabla.sum(axis=1).sort_values().index
-    tabla = tabla.loc[orden_paises]
-    conteo = conteo.loc[orden_paises]
+    tabla, conteo, orden = _tabla_ponderada(
+        df, "pais_nacimiento_var", "descendencia", PESO_NACIONALIDAD, PESO_TOTAL, POBLACION_TOTAL_LABEL,
+    )
     data = tabla.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Descendencia", value_name="Porcentaje")
     data_cantidad = conteo.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Descendencia", value_name="Cantidad")
     data = data.merge(data_cantidad, on=["pais_nacimiento_var", "Descendencia"])
     fig = px.bar(
         data, x="Porcentaje", y="pais_nacimiento_var", color="Descendencia",
         orientation="h", barmode="group",
+        category_orders={"pais_nacimiento_var": orden},
         color_discrete_sequence=CHART_SEQUENCE,
         text="Porcentaje", custom_data=["Cantidad"],
     )
     fig.update_traces(
         texttemplate="%{text}%", textposition="outside",
-        hovertemplate="%{y}<br>Porcentaje: %{x:.1f}%<br>Personas (ponderado): %{customdata[0]:,.0f}",
+        hovertemplate=(
+            "%{y}<br>Porcentaje: %{x:.1f}%<br>"
+            f"<span style='color:{COLOR_DETALLE}'>Personas (ponderado): %{{customdata[0]:,.0f}}</span>"
+        ),
     )
     fig.update_layout(
         yaxis_title=None, xaxis_title="Porcentaje (%)",
@@ -95,14 +119,19 @@ def _descendencia_por_pais(df):
     )
     aplicar_tipografia(fig)
     fig.update_xaxes(range=[0, data["Porcentaje"].max() * 1.2])
-    fig.update_yaxes(tickmode="linear", dtick=1, tickfont=dict(size=9))
+    fig.update_yaxes(tickmode="array", tickvals=orden, ticktext=_ticktext_con_referencia(orden), tickfont=dict(size=9))
     st.plotly_chart(fig, use_container_width=True)
+    st.caption(
+        "«Población total» pondera todo el conjunto filtrado con el peso muestral total, "
+        "como referencia frente a la distribución de descendencia de cada nacionalidad "
+        "(ponderada con el peso muestral por nacionalidad)."
+    )
 
 
 def _region_por_edad(df):
     st.subheader("Región de residencia")
     # No desagrega por país -> usar peso total
-    conteo = _tabla_ponderada(df, "edad_agrupada", "region", PESO_TOTAL)
+    conteo = df.groupby(["edad_agrupada", "region"])[PESO_TOTAL].sum().unstack(fill_value=0)
     tabla = conteo.div(conteo.sum(axis=1), axis=0).mul(100).round(1)
     data = tabla.reset_index().melt(id_vars="edad_agrupada", var_name="region", value_name="Porcentaje")
     data_cantidad = conteo.reset_index().melt(id_vars="edad_agrupada", var_name="region", value_name="Cantidad")
@@ -114,7 +143,10 @@ def _region_por_edad(df):
     )
     fig.update_traces(
         texttemplate="%{text}%", textposition="outside",
-        hovertemplate="%{x}<br>Porcentaje: %{y:.1f}%<br>Personas (ponderado): %{customdata[0]:,.0f}",
+        hovertemplate=(
+            "%{x}<br>Porcentaje: %{y:.1f}%<br>"
+            f"<span style='color:{COLOR_DETALLE}'>Personas (ponderado): %{{customdata[0]:,.0f}}</span>"
+        ),
     )
     fig.update_layout(
         xaxis_title=None, yaxis_title="Porcentaje (%)",
@@ -128,8 +160,8 @@ def render():
     df = load_data()
     contador = iniciar_filtros()
 
-    mask_edicion = filtro_edicion(df, "socio_edicion")
-    mask = mask_edicion & filtro_nacionalidad(df, "socio_nacionalidad", mask_edicion)
+    mask = filtro_edicion(df, "socio_edicion", reset_keys=["socio_nacionalidad"])
+    mask &= filtro_nacionalidad(df, "socio_nacionalidad", df_opciones=df[mask])
     mask &= filtro_region(df, "socio_region")
 
     df = aplicar_filtros(df, mask, contador)
