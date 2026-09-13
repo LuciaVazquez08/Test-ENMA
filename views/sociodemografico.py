@@ -15,9 +15,6 @@ from enma_palette import CHART_SEQUENCE, COLORS
 
 PERIODO_RESIDENCIA_ORDEN = ["Hasta 5 años", "Entre 5 y 9 años", "Más de 10 años"]
 
-ALTURA_GRANDE = 300
-ALTURA_CHICA = 180
-
 # Ponderadores muestrales: por nacionalidad (corrige la composición dentro de
 # cada país de origen) y total (corrige la composición de la población
 # migrante completa, entre países). No son intercambiables: los gráficos que
@@ -79,11 +76,11 @@ def _pais_por_genero(df):
     )
     fig.update_layout(
         yaxis_title=None, xaxis_title="Porcentaje (%)",
-        margin=dict(t=10, b=10), height=ALTURA_GRANDE,
+        margin=dict(t=10, b=10),
     )
     aplicar_tipografia(fig)
     fig.update_yaxes(tickmode="array", tickvals=orden, ticktext=_ticktext_con_referencia(orden), tickfont=dict(size=9))
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
     st.caption(
         "«Población total» pondera todo el conjunto filtrado con el peso muestral total, "
         "como referencia frente a la distribución de género de cada nacionalidad "
@@ -115,12 +112,12 @@ def _descendencia_por_pais(df):
     )
     fig.update_layout(
         yaxis_title=None, xaxis_title="Porcentaje (%)",
-        margin=dict(t=10, b=10), height=ALTURA_GRANDE,
+        margin=dict(t=10, b=10),
     )
     aplicar_tipografia(fig)
     fig.update_xaxes(range=[0, data["Porcentaje"].max() * 1.2])
     fig.update_yaxes(tickmode="array", tickvals=orden, ticktext=_ticktext_con_referencia(orden), tickfont=dict(size=9))
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
     st.caption(
         "«Población total» pondera todo el conjunto filtrado con el peso muestral total, "
         "como referencia frente a la distribución de descendencia de cada nacionalidad "
@@ -150,10 +147,10 @@ def _region_por_edad(df):
     )
     fig.update_layout(
         xaxis_title=None, yaxis_title="Porcentaje (%)",
-        legend_title="Rango etario", margin=dict(t=10, b=10), height=ALTURA_CHICA,
+        legend_title="Rango etario", margin=dict(t=10, b=10),
     )
     aplicar_tipografia(fig)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def render():
@@ -179,6 +176,6 @@ def render():
     with col3:
         _region_por_edad(df)
     with col4:
-        grafico_barras(df, "idioma_var", "Lenguas habladas", horizontal=True, height=ALTURA_CHICA, columna_peso=PESO_TOTAL)
+        grafico_barras(df, "idioma_var", "Lenguas habladas", horizontal=True, columna_peso=PESO_TOTAL)
     with col5:
-        grafico_barras(df, "periodo_residencia", "Años de residencia", orden=PERIODO_RESIDENCIA_ORDEN, height=ALTURA_CHICA, columna_peso=PESO_TOTAL)
+        grafico_barras(df, "periodo_residencia", "Años de residencia", orden=PERIODO_RESIDENCIA_ORDEN, columna_peso=PESO_TOTAL)

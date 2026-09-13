@@ -135,7 +135,6 @@ def grafico_barras(
     titulo: str,
     orden: list | None = None,
     horizontal: bool = False,
-    height: int | None = None,
     columna_peso: str = "peso_muestral_total",
 ):
     st.subheader(titulo)
@@ -173,6 +172,4 @@ def grafico_barras(
     fig.update_traces(texttemplate="%{text}%", textposition="outside", hovertemplate=hovertemplate)
     fig.update_layout(margin=dict(t=10, b=10))
     aplicar_tipografia(fig)
-    if height:
-        fig.update_layout(height=height)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")

@@ -77,6 +77,14 @@ def inject_fonts() -> None:
             padding-top: 1rem;
             padding-bottom: 1rem;
         }}
+        [data-testid="stPlotlyChart"] {{
+            border: 2px solid {COLORS['blue_dark']};
+            border-radius: 12px;
+            overflow: hidden;
+            height: 42vh;
+            min-height: 260px;
+            max-height: 520px;
+        }}
         </style>
         """,
         unsafe_allow_html=True,
