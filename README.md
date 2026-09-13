@@ -6,7 +6,7 @@ El objetivo principal es proporcionar a investigadores, organismos y al público
 
 🔗 **Fuente oficial de datos:** [encuestamigrante.ar](https://www.encuestamigrante.ar/)
 
-🔗 **Tablero:** [tablero ENMA](https://tablero-enma.streamlit.app/)
+🔗 **Tablero:** [tablero Encuesta Nacional Migrante de Argentina](https://test-enma-bi4bwfx775usbxawazftxp.streamlit.app/)
 ---
 
 ## 📊 Objetivos del Proyecto
