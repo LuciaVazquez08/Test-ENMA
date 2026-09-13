@@ -53,104 +53,97 @@ def _ticktext_con_referencia(orden):
 
 
 def _pais_por_genero(df):
-    st.subheader("País de origen")
-    tabla, conteo, orden = _tabla_ponderada(
-        df, "pais_nacimiento_var", "genero_agrup", PESO_NACIONALIDAD, PESO_TOTAL, POBLACION_TOTAL_LABEL,
-    )
-    data = tabla.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Género", value_name="Porcentaje")
-    data_cantidad = conteo.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Género", value_name="Cantidad")
-    data = data.merge(data_cantidad, on=["pais_nacimiento_var", "Género"])
-    fig = px.bar(
-        data, x="Porcentaje", y="pais_nacimiento_var", color="Género",
-        orientation="h", barmode="stack",
-        category_orders={"pais_nacimiento_var": orden},
-        color_discrete_sequence=CHART_SEQUENCE,
-        text="Porcentaje", custom_data=["Cantidad"],
-    )
-    fig.update_traces(
-        texttemplate="%{text}%", textposition="inside",
-        hovertemplate=(
-            "%{y}<br>Porcentaje: %{x:.1f}%<br>"
-            f"<span style='color:{COLOR_DETALLE}'>Personas (ponderado): %{{customdata[0]:,.0f}}</span>"
-        ),
-    )
-    fig.update_layout(
-        yaxis_title=None, xaxis_title="Porcentaje (%)",
-        margin=dict(t=10, b=10),
-    )
-    aplicar_tipografia(fig)
-    fig.update_yaxes(tickmode="array", tickvals=orden, ticktext=_ticktext_con_referencia(orden), tickfont=dict(size=9))
-    st.plotly_chart(fig, width="stretch")
-    st.caption(
-        "«Población total» pondera todo el conjunto filtrado con el peso muestral total, "
-        "como referencia frente a la distribución de género de cada nacionalidad "
-        "(ponderada con el peso muestral por nacionalidad)."
-    )
+    with st.container(border=True, key="grafico_pais_genero"):
+        st.subheader("País de origen")
+        tabla, conteo, orden = _tabla_ponderada(
+            df, "pais_nacimiento_var", "genero_agrup", PESO_NACIONALIDAD, PESO_TOTAL, POBLACION_TOTAL_LABEL,
+        )
+        data = tabla.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Género", value_name="Porcentaje")
+        data_cantidad = conteo.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Género", value_name="Cantidad")
+        data = data.merge(data_cantidad, on=["pais_nacimiento_var", "Género"])
+        fig = px.bar(
+            data, x="Porcentaje", y="pais_nacimiento_var", color="Género",
+            orientation="h", barmode="stack",
+            category_orders={"pais_nacimiento_var": orden},
+            color_discrete_sequence=CHART_SEQUENCE,
+            text="Porcentaje", custom_data=["Cantidad"],
+        )
+        fig.update_traces(
+            texttemplate="%{text}%", textposition="inside",
+            hovertemplate=(
+                "%{y}<br>Porcentaje: %{x:.1f}%<br>"
+                f"<span style='color:{COLOR_DETALLE}'>Personas (ponderado): %{{customdata[0]:,.0f}}</span>"
+            ),
+        )
+        fig.update_layout(
+            yaxis_title=None, xaxis_title="Porcentaje (%)",
+            margin=dict(t=25, b=25, l=15, r=15),
+        )
+        aplicar_tipografia(fig)
+        fig.update_yaxes(tickmode="array", tickvals=orden, ticktext=_ticktext_con_referencia(orden), tickfont=dict(size=9))
+        st.plotly_chart(fig, width="stretch")
 
 
 def _descendencia_por_pais(df):
-    st.subheader("Descendencia")
-    tabla, conteo, orden = _tabla_ponderada(
-        df, "pais_nacimiento_var", "descendencia", PESO_NACIONALIDAD, PESO_TOTAL, POBLACION_TOTAL_LABEL,
-    )
-    data = tabla.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Descendencia", value_name="Porcentaje")
-    data_cantidad = conteo.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Descendencia", value_name="Cantidad")
-    data = data.merge(data_cantidad, on=["pais_nacimiento_var", "Descendencia"])
-    fig = px.bar(
-        data, x="Porcentaje", y="pais_nacimiento_var", color="Descendencia",
-        orientation="h", barmode="group",
-        category_orders={"pais_nacimiento_var": orden},
-        color_discrete_sequence=CHART_SEQUENCE,
-        text="Porcentaje", custom_data=["Cantidad"],
-    )
-    fig.update_traces(
-        texttemplate="%{text}%", textposition="outside",
-        hovertemplate=(
-            "%{y}<br>Porcentaje: %{x:.1f}%<br>"
-            f"<span style='color:{COLOR_DETALLE}'>Personas (ponderado): %{{customdata[0]:,.0f}}</span>"
-        ),
-    )
-    fig.update_layout(
-        yaxis_title=None, xaxis_title="Porcentaje (%)",
-        margin=dict(t=10, b=10),
-    )
-    aplicar_tipografia(fig)
-    fig.update_xaxes(range=[0, data["Porcentaje"].max() * 1.2])
-    fig.update_yaxes(tickmode="array", tickvals=orden, ticktext=_ticktext_con_referencia(orden), tickfont=dict(size=9))
-    st.plotly_chart(fig, width="stretch")
-    st.caption(
-        "«Población total» pondera todo el conjunto filtrado con el peso muestral total, "
-        "como referencia frente a la distribución de descendencia de cada nacionalidad "
-        "(ponderada con el peso muestral por nacionalidad)."
-    )
+    with st.container(border=True, key="grafico_descendencia"):
+        st.subheader("Descendencia")
+        tabla, conteo, orden = _tabla_ponderada(
+            df, "pais_nacimiento_var", "descendencia", PESO_NACIONALIDAD, PESO_TOTAL, POBLACION_TOTAL_LABEL,
+        )
+        data = tabla.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Descendencia", value_name="Porcentaje")
+        data_cantidad = conteo.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Descendencia", value_name="Cantidad")
+        data = data.merge(data_cantidad, on=["pais_nacimiento_var", "Descendencia"])
+        fig = px.bar(
+            data, x="Porcentaje", y="pais_nacimiento_var", color="Descendencia",
+            orientation="h", barmode="group",
+            category_orders={"pais_nacimiento_var": orden},
+            color_discrete_sequence=CHART_SEQUENCE,
+            text="Porcentaje", custom_data=["Cantidad"],
+        )
+        fig.update_traces(
+            texttemplate="%{text}%", textposition="outside",
+            hovertemplate=(
+                "%{y}<br>Porcentaje: %{x:.1f}%<br>"
+                f"<span style='color:{COLOR_DETALLE}'>Personas (ponderado): %{{customdata[0]:,.0f}}</span>"
+            ),
+        )
+        fig.update_layout(
+            yaxis_title=None, xaxis_title="Porcentaje (%)",
+            margin=dict(t=25, b=25, l=15, r=15),
+        )
+        aplicar_tipografia(fig)
+        fig.update_xaxes(range=[0, data["Porcentaje"].max() * 1.2])
+        fig.update_yaxes(tickmode="array", tickvals=orden, ticktext=_ticktext_con_referencia(orden), tickfont=dict(size=9))
+        st.plotly_chart(fig, width="stretch")
 
 
 def _region_por_edad(df):
-    st.subheader("Región de residencia")
-    # No desagrega por país -> usar peso total
-    conteo = df.groupby(["edad_agrupada", "region"])[PESO_TOTAL].sum().unstack(fill_value=0)
-    tabla = conteo.div(conteo.sum(axis=1), axis=0).mul(100).round(1)
-    data = tabla.reset_index().melt(id_vars="edad_agrupada", var_name="region", value_name="Porcentaje")
-    data_cantidad = conteo.reset_index().melt(id_vars="edad_agrupada", var_name="region", value_name="Cantidad")
-    data = data.merge(data_cantidad, on=["edad_agrupada", "region"])
-    fig = px.bar(
-        data, x="region", y="Porcentaje", color="edad_agrupada",
-        barmode="group", color_discrete_sequence=CHART_SEQUENCE,
-        text="Porcentaje", custom_data=["Cantidad"],
-    )
-    fig.update_traces(
-        texttemplate="%{text}%", textposition="outside",
-        hovertemplate=(
-            "%{x}<br>Porcentaje: %{y:.1f}%<br>"
-            f"<span style='color:{COLOR_DETALLE}'>Personas (ponderado): %{{customdata[0]:,.0f}}</span>"
-        ),
-    )
-    fig.update_layout(
-        xaxis_title=None, yaxis_title="Porcentaje (%)",
-        legend_title="Rango etario", margin=dict(t=10, b=10),
-    )
-    aplicar_tipografia(fig)
-    st.plotly_chart(fig, width="stretch")
+    with st.container(border=True, key="grafico_region_edad"):
+        st.subheader("Región de residencia")
+        # No desagrega por país -> usar peso total
+        conteo = df.groupby(["edad_agrupada", "region"])[PESO_TOTAL].sum().unstack(fill_value=0)
+        tabla = conteo.div(conteo.sum(axis=1), axis=0).mul(100).round(1)
+        data = tabla.reset_index().melt(id_vars="edad_agrupada", var_name="region", value_name="Porcentaje")
+        data_cantidad = conteo.reset_index().melt(id_vars="edad_agrupada", var_name="region", value_name="Cantidad")
+        data = data.merge(data_cantidad, on=["edad_agrupada", "region"])
+        fig = px.bar(
+            data, x="region", y="Porcentaje", color="edad_agrupada",
+            barmode="group", color_discrete_sequence=CHART_SEQUENCE,
+            text="Porcentaje", custom_data=["Cantidad"],
+        )
+        fig.update_traces(
+            texttemplate="%{text}%", textposition="outside",
+            hovertemplate=(
+                "%{x}<br>Porcentaje: %{y:.1f}%<br>"
+                f"<span style='color:{COLOR_DETALLE}'>Personas (ponderado): %{{customdata[0]:,.0f}}</span>"
+            ),
+        )
+        fig.update_layout(
+            xaxis_title=None, yaxis_title="Porcentaje (%)",
+            legend_title="Rango etario", margin=dict(t=25, b=25, l=15, r=15),
+        )
+        aplicar_tipografia(fig)
+        st.plotly_chart(fig, width="stretch")
 
 
 def render():

@@ -137,39 +137,40 @@ def grafico_barras(
     horizontal: bool = False,
     columna_peso: str = "peso_muestral_total",
 ):
-    st.subheader(titulo)
-    data = distribucion(df, columna, orden, columna_peso=columna_peso)
-    if data.empty:
-        st.info("Sin datos para este filtro.")
-        return
-    if horizontal:
-        data = data.iloc[::-1]
-        fig = px.bar(
-            data, x="Porcentaje", y=columna, orientation="h",
-            color_discrete_sequence=CHART_SEQUENCE, text="Porcentaje",
-            custom_data=["Cantidad"],
-        )
-        fig.update_layout(yaxis_title=None, xaxis_title="Porcentaje (%)")
-        fig.update_xaxes(range=[0, data["Porcentaje"].max() * 1.18])
-        hovertemplate = (
-            "%{y}<br>Porcentaje: %{x:.1f}%<br>"
-            f"<span style='color:{COLOR_DETALLE}'>Personas (ponderado): %{{customdata[0]:,.0f}}</span>"
-            "<extra></extra>"
-        )
-    else:
-        fig = px.bar(
-            data, x=columna, y="Porcentaje",
-            color_discrete_sequence=CHART_SEQUENCE, text="Porcentaje",
-            custom_data=["Cantidad"],
-        )
-        fig.update_layout(xaxis_title=None, yaxis_title="Porcentaje (%)")
-        fig.update_yaxes(range=[0, data["Porcentaje"].max() * 1.3])
-        hovertemplate = (
-            "%{x}<br>Porcentaje: %{y:.1f}%<br>"
-            f"<span style='color:{COLOR_DETALLE}'>Personas (ponderado): %{{customdata[0]:,.0f}}</span>"
-            "<extra></extra>"
-        )
-    fig.update_traces(texttemplate="%{text}%", textposition="outside", hovertemplate=hovertemplate)
-    fig.update_layout(margin=dict(t=10, b=10))
-    aplicar_tipografia(fig)
-    st.plotly_chart(fig, width="stretch")
+    with st.container(border=True, key=f"grafico_{columna}"):
+        st.subheader(titulo)
+        data = distribucion(df, columna, orden, columna_peso=columna_peso)
+        if data.empty:
+            st.info("Sin datos para este filtro.")
+            return
+        if horizontal:
+            data = data.iloc[::-1]
+            fig = px.bar(
+                data, x="Porcentaje", y=columna, orientation="h",
+                color_discrete_sequence=CHART_SEQUENCE, text="Porcentaje",
+                custom_data=["Cantidad"],
+            )
+            fig.update_layout(yaxis_title=None, xaxis_title="Porcentaje (%)")
+            fig.update_xaxes(range=[0, data["Porcentaje"].max() * 1.18])
+            hovertemplate = (
+                "%{y}<br>Porcentaje: %{x:.1f}%<br>"
+                f"<span style='color:{COLOR_DETALLE}'>Personas (ponderado): %{{customdata[0]:,.0f}}</span>"
+                "<extra></extra>"
+            )
+        else:
+            fig = px.bar(
+                data, x=columna, y="Porcentaje",
+                color_discrete_sequence=CHART_SEQUENCE, text="Porcentaje",
+                custom_data=["Cantidad"],
+            )
+            fig.update_layout(xaxis_title=None, yaxis_title="Porcentaje (%)")
+            fig.update_yaxes(range=[0, data["Porcentaje"].max() * 1.3])
+            hovertemplate = (
+                "%{x}<br>Porcentaje: %{y:.1f}%<br>"
+                f"<span style='color:{COLOR_DETALLE}'>Personas (ponderado): %{{customdata[0]:,.0f}}</span>"
+                "<extra></extra>"
+            )
+        fig.update_traces(texttemplate="%{text}%", textposition="outside", hovertemplate=hovertemplate)
+        fig.update_layout(margin=dict(t=25, b=25, l=15, r=15))
+        aplicar_tipografia(fig)
+        st.plotly_chart(fig, width="stretch")
