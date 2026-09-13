@@ -77,10 +77,12 @@ def inject_fonts() -> None:
             padding-top: 1rem;
             padding-bottom: 1rem;
         }}
+        [class*="st-key-grafico_"] {{
+            border: 2px solid #000000 !important;
+            border-radius: 12px !important;
+            padding: 1.25rem !important;
+        }}
         [data-testid="stPlotlyChart"] {{
-            border: 2px solid {COLORS['blue_dark']};
-            border-radius: 12px;
-            overflow: hidden;
             height: 42vh;
             min-height: 260px;
             max-height: 520px;
