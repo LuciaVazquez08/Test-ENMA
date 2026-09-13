@@ -18,7 +18,7 @@ Uso típico en un dashboard Streamlit:
 COLORS = {
     "yellow_1": "#FFC456",
     "yellow_2": "#FFA602",
-    "orange_1": "#FF7900",   
+    "orange_1": "#FF7900",   # color primario de marca
     "orange_2": "#FF4900",
 
     "blue": "#027BFF",
@@ -26,9 +26,9 @@ COLORS = {
     "blue_pale": "#D6EAFF",
     "blue_accent": "#3DA0FF",
 
-    "text": "#0F0F1A",    
-    "text_2": "#2E2E4A",  
-    "text_3": "#6B6B8A",  
+    "text": "#0F0F1A",    # texto principal
+    "text_2": "#2E2E4A",  # texto secundario
+    "text_3": "#6B6B8A",  # texto terciario / muted
 
     "border": "#E6E9F2",
     "background": "#FFFFFF",
@@ -76,6 +76,14 @@ def inject_fonts() -> None:
         .block-container {{
             padding-top: 1rem;
             padding-bottom: 1rem;
+        }}
+        [data-testid="stPlotlyChart"] {{
+            border: 2px solid {COLORS['blue_dark']};
+            border-radius: 12px;
+            overflow: hidden;
+            height: 42vh;
+            min-height: 260px;
+            max-height: 520px;
         }}
         </style>
         """,

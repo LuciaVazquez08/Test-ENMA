@@ -2,10 +2,12 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-from enma_palette import CHART_SEQUENCE, FONT_BODY, COLORS
+from enma_palette import CHART_SEQUENCE, COLORS, FONT_BODY
 
 DATA_PATH = "data/processed/ENMA.csv"
+
 COLOR_DETALLE = COLORS["text_3"]
+
 
 def aplicar_tipografia(fig):
     """DM Sans en negro puro para todos los textos del gráfico. El título va aparte, vía
@@ -52,12 +54,14 @@ def filtro_edicion(df: pd.DataFrame, key: str, reset_keys: list[str] | None = No
     st.session_state[anio_previo_key] = seleccion
     return df["Año"] == seleccion
 
+
 def version_key(key: str) -> str:
     """Key efectiva de un widget versionado por `filtro_edicion` (ver ahí):
     cambia cuando se le pide resetear, lo que fuerza a Streamlit a tratarlo
     como un widget nuevo en el navegador en vez de arrastrar la selección
     previa."""
     return f"{key}_{st.session_state.get(f'_{key}_version', 0)}"
+
 
 def filtro_nacionalidad(df: pd.DataFrame, key: str, df_opciones: pd.DataFrame | None = None) -> pd.Series:
     """`df_opciones` permite calcular las opciones del multiselect sobre un
@@ -69,6 +73,7 @@ def filtro_nacionalidad(df: pd.DataFrame, key: str, df_opciones: pd.DataFrame | 
     nacionalidades = sorted(fuente["pais_nacimiento_var"].dropna().unique())
     seleccion = st.sidebar.multiselect("Nacionalidad", nacionalidades, default=nacionalidades, key=version_key(key))
     return df["pais_nacimiento_var"].isin(seleccion)
+
 
 def filtro_genero(df: pd.DataFrame, key: str) -> pd.Series:
     generos = sorted(df["genero_agrup"].dropna().unique())
@@ -106,6 +111,9 @@ def distribucion(
     orden: list | None = None,
     columna_peso: str = "peso_muestral_total",
 ) -> pd.DataFrame:
+    """La magnitud de cada categoría se calcula como la suma del ponderador
+    `columna_peso` en lugar del conteo crudo de filas, para que el porcentaje
+    refleje la población estimada y no la composición de la muestra."""
     datos = df.dropna(subset=[columna])
     cantidad = datos.groupby(columna)[columna_peso].sum()
     porcentaje = cantidad.div(cantidad.sum()).mul(100).round(1)
@@ -127,7 +135,6 @@ def grafico_barras(
     titulo: str,
     orden: list | None = None,
     horizontal: bool = False,
-    height: int | None = None,
     columna_peso: str = "peso_muestral_total",
 ):
     st.subheader(titulo)
@@ -165,6 +172,4 @@ def grafico_barras(
     fig.update_traces(texttemplate="%{text}%", textposition="outside", hovertemplate=hovertemplate)
     fig.update_layout(margin=dict(t=10, b=10))
     aplicar_tipografia(fig)
-    if height:
-        fig.update_layout(height=height)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
