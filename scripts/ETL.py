@@ -238,7 +238,6 @@ def run_etl():
 
     PROVINCIA_A_REGION = {
         "Ciudad de Buenos Aires (CABA)": "AMBA",
-        # Buenos Aires (Provincia) → se resuelve aparte
         "Córdoba":           "Región Pampeana",
         "Santa Fe":          "Región Pampeana",
         "Entre Ríos":        "Región Pampeana",
@@ -277,7 +276,7 @@ def run_etl():
         n = normalize(localidad)
         return any(
             n == p or n in p or p in n
-            for p in PARTIDOS_AMBA  # ya están normalizados en el set
+            for p in PARTIDOS_AMBA 
         )
 
     def get_region(provincia: str, localidad: str) -> str | None:
@@ -392,8 +391,6 @@ def run_etl():
 
     df_2023["hijos"] = df_2023.apply(mapear_hijos_2023, axis=1)
     df_2023.drop(columns=['q30_hijos_exterior', 'q30_hijos_arg', 'q29_hijos_num'], inplace=True)
-    # print(df_2023['hijos'].value_counts())
-
     df_2023.drop(columns=['q31_hijos_menores_exterior'], inplace=True)
 
     #EDUCACION HIJOS
@@ -418,10 +415,6 @@ def run_etl():
     df_2023.drop(columns=['q32_asistencia_educacion'], inplace=True)
 
     #INCONVENIENTES INSCRIPCION ESCOLAR
-    # Nota metodológica (*): en 2023 la pregunta desagrega la documentación en 3 categorías
-    # (falta de DNI argentino / documentación escolar del país de origen / falta de documentación
-    # escolar argentina) que en 2020 se relevaban como una única categoría. Para poder comparar
-    # ambos años se agrupan las 3 categorías de 2023 en la única categoría de "documentación" de 2020.
     df_2020['inconveniente_educacion'] = df_2020['q22_pbm_inscripcion'].replace({
         'NO': 'No',
         'Si, otros problemas': 'Sí, otros problemas',
@@ -471,11 +464,7 @@ def run_etl():
     df_2023['salud_cobertura'] = df_2023['q36_salud']
     df_2023.drop(columns=['q36_salud'], inplace=True)
 
-    #VALIDAR: la pregunta no es estrictamente equivalente entre años. En 2020 se relevan
-    # enfermedades/condiciones crónicas (¿tenés alguna enfermedad?), mientras que en 2023 se
-    # releva si acudió al sistema de salud por salud física, mental o sexual/reproductiva en
-    # los últimos 2 años. Se arma como aproximación Sí/No/Prefiero no responder; pendiente de
-    # validación por el equipo de coordinación de ENMA.
+    #VALIDAR
     def resolver_problemas_salud_2020(row):
         if pd.notna(row['q29_enfermedad_ninguna']):
             return 'No'
@@ -510,9 +499,7 @@ def run_etl():
         'q37_salud_problemas_esi', 'q37_salud_problemas_no'
     ], inplace=True)
 
-    #ACCESO A LA SALUD (agrupado según tablero)
-    # Nota: en 2020 no existían las opciones "no pudo atenderse" ni "nunca necesité atenderme".
-    # Como la pregunta es de selección múltiple, se resuelve a una sola categoría por persona
+    #ACCESO A LA SALUD se resuelve a una sola categoría por persona
     # con esta prioridad: nunca necesitó > no pudo atenderse > salud pública > obra social/privada > tradicional/familiar/comunitaria.
     def resolver_acceso_salud_2020(row):
         publica = pd.notna(row['q26_salud_guardias']) or pd.notna(row['q26_salud_centros']) or pd.notna(row['q26_salud_consultorios'])

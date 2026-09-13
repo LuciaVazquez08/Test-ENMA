@@ -18,7 +18,7 @@ Uso típico en un dashboard Streamlit:
 COLORS = {
     "yellow_1": "#FFC456",
     "yellow_2": "#FFA602",
-    "orange_1": "#FF7900",   # color primario de marca
+    "orange_1": "#FF7900",   
     "orange_2": "#FF4900",
 
     "blue": "#027BFF",
@@ -26,9 +26,9 @@ COLORS = {
     "blue_pale": "#D6EAFF",
     "blue_accent": "#3DA0FF",
 
-    "text": "#0F0F1A",    # texto principal
-    "text_2": "#2E2E4A",  # texto secundario
-    "text_3": "#6B6B8A",  # texto terciario / muted
+    "text": "#0F0F1A",    
+    "text_2": "#2E2E4A",  
+    "text_3": "#6B6B8A",  
 
     "border": "#E6E9F2",
     "background": "#FFFFFF",

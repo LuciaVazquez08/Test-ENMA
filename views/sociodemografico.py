@@ -18,17 +18,11 @@ PERIODO_RESIDENCIA_ORDEN = ["Hasta 5 años", "Entre 5 y 9 años", "Más de 10 a�
 ALTURA_GRANDE = 300
 ALTURA_CHICA = 180
 
-# Ponderadores muestrales: por nacionalidad (corrige la composición dentro de
-# cada país de origen) y total (corrige la composición de la población
-# migrante completa, entre países). No son intercambiables: los gráficos que
-# desagregan por país usan el primero fila por fila, y la fila de referencia
-# poblacional usa el segundo.
-PESO_NACIONALIDAD = "peso_muestral_nacionalidad"
 PESO_TOTAL = "peso_muestral_total"
+PESO_NACIONALIDAD = "peso_muestral_nacionalidad"
 
 POBLACION_TOTAL_LABEL = "Población total"
 COLOR_DETALLE = COLORS["text_3"]
-
 
 def _tabla_ponderada(df, index_col, columns_col, peso_pais, peso_poblacion, etiqueta_poblacion):
     """Arma una tabla índice x columnas con los pesos muestrales sumados (no
@@ -84,17 +78,12 @@ def _pais_por_genero(df):
     aplicar_tipografia(fig)
     fig.update_yaxes(tickmode="array", tickvals=orden, ticktext=_ticktext_con_referencia(orden), tickfont=dict(size=9))
     st.plotly_chart(fig, use_container_width=True)
-    st.caption(
-        "«Población total» pondera todo el conjunto filtrado con el peso muestral total, "
-        "como referencia frente a la distribución de género de cada nacionalidad "
-        "(ponderada con el peso muestral por nacionalidad)."
-    )
 
 
 def _descendencia_por_pais(df):
     st.subheader("Descendencia")
     tabla, conteo, orden = _tabla_ponderada(
-        df, "pais_nacimiento_var", "descendencia", PESO_NACIONALIDAD, PESO_TOTAL, POBLACION_TOTAL_LABEL,
+        df, "pais_nacimiento_var", "descendencia", PESO_NACIONALIDAD, PESO_TOTAL, POBLACION_TOTAL_LABEL
     )
     data = tabla.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Descendencia", value_name="Porcentaje")
     data_cantidad = conteo.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Descendencia", value_name="Cantidad")
@@ -102,7 +91,6 @@ def _descendencia_por_pais(df):
     fig = px.bar(
         data, x="Porcentaje", y="pais_nacimiento_var", color="Descendencia",
         orientation="h", barmode="group",
-        category_orders={"pais_nacimiento_var": orden},
         color_discrete_sequence=CHART_SEQUENCE,
         text="Porcentaje", custom_data=["Cantidad"],
     )
@@ -121,16 +109,10 @@ def _descendencia_por_pais(df):
     fig.update_xaxes(range=[0, data["Porcentaje"].max() * 1.2])
     fig.update_yaxes(tickmode="array", tickvals=orden, ticktext=_ticktext_con_referencia(orden), tickfont=dict(size=9))
     st.plotly_chart(fig, use_container_width=True)
-    st.caption(
-        "«Población total» pondera todo el conjunto filtrado con el peso muestral total, "
-        "como referencia frente a la distribución de descendencia de cada nacionalidad "
-        "(ponderada con el peso muestral por nacionalidad)."
-    )
 
 
 def _region_por_edad(df):
     st.subheader("Región de residencia")
-    # No desagrega por país -> usar peso total
     conteo = df.groupby(["edad_agrupada", "region"])[PESO_TOTAL].sum().unstack(fill_value=0)
     tabla = conteo.div(conteo.sum(axis=1), axis=0).mul(100).round(1)
     data = tabla.reset_index().melt(id_vars="edad_agrupada", var_name="region", value_name="Porcentaje")
@@ -160,8 +142,8 @@ def render():
     df = load_data()
     contador = iniciar_filtros()
 
-    mask = filtro_edicion(df, "socio_edicion", reset_keys=["socio_nacionalidad"])
-    mask &= filtro_nacionalidad(df, "socio_nacionalidad", df_opciones=df[mask])
+    mask_edicion = filtro_edicion(df, "socio_edicion", reset_keys=["socio_nacionalidad"])
+    mask = mask_edicion & filtro_nacionalidad(df, "socio_nacionalidad", df_opciones=df[mask_edicion])
     mask &= filtro_region(df, "socio_region")
 
     df = aplicar_filtros(df, mask, contador)
