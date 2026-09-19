@@ -1,3 +1,5 @@
+import os
+
 import pandas as pd
 import plotly.express as px
 import streamlit as st
@@ -23,8 +25,17 @@ def aplicar_tipografia(fig):
 
 
 @st.cache_data
-def load_data() -> pd.DataFrame:
+def _leer_datos(_mtime: float) -> pd.DataFrame:
     return pd.read_csv(DATA_PATH)
+
+
+def load_data() -> pd.DataFrame:
+    """`st.cache_data` cachea por código + argumentos, no por el contenido del archivo: si
+    ENMA.csv cambia (nuevo commit) pero el proceso de Streamlit sigue "caliente" (no se reinició),
+    sin este truco seguiría sirviendo el CSV viejo cacheado. Pasar la fecha de modificación del
+    archivo como argumento oculto hace que la key de cache cambie sola cada vez que el CSV se
+    actualiza, sin depender de un reinicio manual."""
+    return _leer_datos(os.path.getmtime(DATA_PATH))
 
 
 def iniciar_filtros() -> "st.delta_generator.DeltaGenerator":
@@ -176,6 +187,17 @@ def grafico_barras(
         st.plotly_chart(fig, width="stretch")
 
 
+def _a_binario(serie: pd.Series) -> pd.Series:
+    """Normaliza a 0.0/1.0/NaN una columna booleana ponderable armada por `construir_multiseleccion`
+    en el ETL. Al guardarse y releerse desde CSV, True/False pueden volver como bool de Python,
+    como texto ("True"/"False") o, si pandas ya los infirió como booleanos puros, como su propio
+    dtype; `.astype(float)` a secas rompe con cualquiera de las variantes de texto."""
+    return pd.to_numeric(
+        serie.replace({True: 1, False: 0, "True": 1, "False": 0}),
+        errors="coerce",
+    )
+
+
 def grafico_multiseleccion(
     df: pd.DataFrame,
     opciones: list[tuple[str, str]],
@@ -198,7 +220,7 @@ def grafico_multiseleccion(
             datos = df.dropna(subset=[columna])
             if datos.empty:
                 continue
-            seleccionado = datos[columna].astype(float)
+            seleccionado = _a_binario(datos[columna])
             peso = datos[columna_peso]
             total_peso = peso.sum()
             if not total_peso:
