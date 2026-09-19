@@ -40,9 +40,22 @@ def load_data() -> pd.DataFrame:
 
 def iniciar_filtros() -> "st.delta_generator.DeltaGenerator":
     """Encabezado del panel de filtros de la página + placeholder para el contador
-    de encuestados (se completa recién en aplicar_filtros, una vez armada la máscara)."""
+    de encuestados (se completa recién en aplicar_filtros, una vez armada la máscara).
+    También reinicia la rotación de colores de los gráficos (ver `_siguiente_color`), para que
+    cada página vuelva a empezar por el primer color de la paleta en su primer gráfico."""
+    st.session_state["_color_index"] = 0
     st.sidebar.header("Filtros")
     return st.sidebar.empty()
+
+
+def _siguiente_color() -> str:
+    """Devuelve el próximo color de CHART_SEQUENCE y avanza la rotación, para que los distintos
+    gráficos de barra de una misma página no salgan todos del mismo color (Plotly Express, sin una
+    columna `color`, siempre usa el primer color de la secuencia para toda la serie). La rotación
+    se reinicia en `iniciar_filtros`, al principio de cada página."""
+    indice = st.session_state.get("_color_index", 0)
+    st.session_state["_color_index"] = indice + 1
+    return CHART_SEQUENCE[indice % len(CHART_SEQUENCE)]
 
 
 def filtro_edicion(df: pd.DataFrame, key: str, reset_keys: list[str] | None = None) -> pd.Series:
@@ -154,11 +167,12 @@ def grafico_barras(
         if data.empty:
             st.info("Sin datos para este filtro.")
             return
+        color = _siguiente_color()
         if horizontal:
             data = data.iloc[::-1]
             fig = px.bar(
                 data, x="Porcentaje", y=columna, orientation="h",
-                color_discrete_sequence=CHART_SEQUENCE, text="Porcentaje",
+                color_discrete_sequence=[color], text="Porcentaje",
                 custom_data=["Cantidad"],
             )
             fig.update_layout(yaxis_title=None, xaxis_title="Porcentaje (%)")
@@ -171,7 +185,7 @@ def grafico_barras(
         else:
             fig = px.bar(
                 data, x=columna, y="Porcentaje",
-                color_discrete_sequence=CHART_SEQUENCE, text="Porcentaje",
+                color_discrete_sequence=[color], text="Porcentaje",
                 custom_data=["Cantidad"],
             )
             fig.update_layout(xaxis_title=None, yaxis_title="Porcentaje (%)")
@@ -237,7 +251,7 @@ def grafico_multiseleccion(
         data = pd.DataFrame(filas).sort_values("Porcentaje", ascending=True)
         fig = px.bar(
             data, x="Porcentaje", y="Opción", orientation="h",
-            color_discrete_sequence=CHART_SEQUENCE, text="Porcentaje",
+            color_discrete_sequence=[_siguiente_color()], text="Porcentaje",
             custom_data=["Cantidad"],
         )
         fig.update_layout(yaxis_title=None, xaxis_title="Porcentaje (%)")
