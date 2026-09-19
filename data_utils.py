@@ -174,3 +174,58 @@ def grafico_barras(
         fig.update_layout(margin=dict(t=25, b=25, l=15, r=15))
         aplicar_tipografia(fig)
         st.plotly_chart(fig, width="stretch")
+
+
+def grafico_multiseleccion(
+    df: pd.DataFrame,
+    opciones: list[tuple[str, str]],
+    titulo: str,
+    subtitulo: str,
+    columna_peso: str = "peso_muestral_total",
+):
+    """Gráfico para preguntas de selección múltiple armonizadas en el ETL como un set de columnas
+    booleanas (una por opción final, ver `construir_multiseleccion` en scripts/ETL.py): una barra
+    por opción con el % ponderado de personas que la seleccionó, sobre el total de quienes
+    respondieron la pregunta (no sobre la muestra completa). A diferencia de `grafico_barras`, las
+    opciones no son mutuamente excluyentes: una misma persona puede sumar en más de una barra si
+    marcó varias, por eso el subtítulo aclara qué representa cada porcentaje."""
+    columna_base = opciones[0][0]
+    with st.container(border=True, key=f"grafico_{columna_base}"):
+        st.subheader(titulo)
+        st.caption(subtitulo)
+        filas = []
+        for columna, etiqueta in opciones:
+            datos = df.dropna(subset=[columna])
+            if datos.empty:
+                continue
+            seleccionado = datos[columna].astype(float)
+            peso = datos[columna_peso]
+            total_peso = peso.sum()
+            if not total_peso:
+                continue
+            cantidad = (seleccionado * peso).sum()
+            filas.append({
+                "Opción": etiqueta,
+                "Porcentaje": round(cantidad / total_peso * 100, 1),
+                "Cantidad": round(cantidad),
+            })
+        if not filas:
+            st.info("Sin datos para este filtro.")
+            return
+        data = pd.DataFrame(filas).sort_values("Porcentaje", ascending=True)
+        fig = px.bar(
+            data, x="Porcentaje", y="Opción", orientation="h",
+            color_discrete_sequence=CHART_SEQUENCE, text="Porcentaje",
+            custom_data=["Cantidad"],
+        )
+        fig.update_layout(yaxis_title=None, xaxis_title="Porcentaje (%)")
+        fig.update_xaxes(range=[0, data["Porcentaje"].max() * 1.18])
+        hovertemplate = (
+            "%{y}<br>Porcentaje: %{x:.1f}%<br>"
+            f"<span style='color:{COLOR_DETALLE}'>Personas (ponderado): %{{customdata[0]:,.0f}}</span>"
+            "<extra></extra>"
+        )
+        fig.update_traces(texttemplate="%{text}%", textposition="outside", hovertemplate=hovertemplate)
+        fig.update_layout(margin=dict(t=25, b=25, l=15, r=15))
+        aplicar_tipografia(fig)
+        st.plotly_chart(fig, width="stretch")
