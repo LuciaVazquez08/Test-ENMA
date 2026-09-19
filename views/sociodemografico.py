@@ -11,7 +11,7 @@ from data_utils import (
     iniciar_filtros,
     load_data,
 )
-from enma_palette import CHART_SEQUENCE, COLORS
+from enma_palette import CHART_SEQUENCE
 
 PERIODO_RESIDENCIA_ORDEN = ["Hasta 5 años", "Entre 5 y 9 años", "Más de 10 años"]
 
@@ -24,7 +24,6 @@ PESO_NACIONALIDAD = "peso_muestral_nacionalidad"
 PESO_TOTAL = "peso_muestral_total"
 
 POBLACION_TOTAL_LABEL = "Población total"
-COLOR_DETALLE = COLORS["text_3"]
 
 
 def _tabla_ponderada(df, index_col, columns_col, peso_pais, peso_poblacion, etiqueta_poblacion):
@@ -70,10 +69,9 @@ def _pais_por_genero(df):
         )
         fig.update_traces(
             texttemplate="%{text}%", textposition="inside",
-            hovertemplate=(
-                "%{y}<br>Porcentaje: %{x:.1f}%<br>"
-                f"<span style='color:{COLOR_DETALLE}'>Personas (ponderado): %{{customdata[0]:,.0f}}</span>"
-            ),
+            # Detalle de personas (ponderado) deshabilitado a pedido; customdata queda
+            # disponible para reactivarlo agregando de nuevo el <span> con %{customdata[0]}.
+            hovertemplate="%{y}<br>Porcentaje: %{x:.1f}%",
         )
         fig.update_layout(
             yaxis_title=None, xaxis_title="Porcentaje (%)",
@@ -102,10 +100,9 @@ def _descendencia_por_pais(df):
         )
         fig.update_traces(
             texttemplate="%{text}%", textposition="outside",
-            hovertemplate=(
-                "%{y}<br>Porcentaje: %{x:.1f}%<br>"
-                f"<span style='color:{COLOR_DETALLE}'>Personas (ponderado): %{{customdata[0]:,.0f}}</span>"
-            ),
+            # Detalle de personas (ponderado) deshabilitado a pedido; customdata queda
+            # disponible para reactivarlo agregando de nuevo el <span> con %{customdata[0]}.
+            hovertemplate="%{y}<br>Porcentaje: %{x:.1f}%",
         )
         fig.update_layout(
             yaxis_title=None, xaxis_title="Porcentaje (%)",
@@ -133,10 +130,9 @@ def _region_por_edad(df):
         )
         fig.update_traces(
             texttemplate="%{text}%", textposition="outside",
-            hovertemplate=(
-                "%{x}<br>Porcentaje: %{y:.1f}%<br>"
-                f"<span style='color:{COLOR_DETALLE}'>Personas (ponderado): %{{customdata[0]:,.0f}}</span>"
-            ),
+            # Detalle de personas (ponderado) deshabilitado a pedido; customdata queda
+            # disponible para reactivarlo agregando de nuevo el <span> con %{customdata[0]}.
+            hovertemplate="%{x}<br>Porcentaje: %{y:.1f}%",
         )
         fig.update_layout(
             xaxis_title=None, yaxis_title="Porcentaje (%)",

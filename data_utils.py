@@ -178,8 +178,9 @@ def grafico_barras(
             fig.update_layout(yaxis_title=None, xaxis_title="Porcentaje (%)")
             fig.update_xaxes(range=[0, data["Porcentaje"].max() * 1.18])
             hovertemplate = (
-                "%{y}<br>Porcentaje: %{x:.1f}%<br>"
-                f"<span style='color:{COLOR_DETALLE}'>Personas (ponderado): %{{customdata[0]:,.0f}}</span>"
+                "%{y}<br>Porcentaje: %{x:.1f}%"
+                # Detalle de personas (ponderado) deshabilitado a pedido; customdata queda
+                # disponible para reactivarlo agregando de nuevo el <span> con %{customdata[0]}.
                 "<extra></extra>"
             )
         else:
@@ -191,8 +192,9 @@ def grafico_barras(
             fig.update_layout(xaxis_title=None, yaxis_title="Porcentaje (%)")
             fig.update_yaxes(range=[0, data["Porcentaje"].max() * 1.3])
             hovertemplate = (
-                "%{x}<br>Porcentaje: %{y:.1f}%<br>"
-                f"<span style='color:{COLOR_DETALLE}'>Personas (ponderado): %{{customdata[0]:,.0f}}</span>"
+                "%{x}<br>Porcentaje: %{y:.1f}%"
+                # Detalle de personas (ponderado) deshabilitado a pedido; customdata queda
+                # disponible para reactivarlo agregando de nuevo el <span> con %{customdata[0]}.
                 "<extra></extra>"
             )
         fig.update_traces(texttemplate="%{text}%", textposition="outside", hovertemplate=hovertemplate)
@@ -257,8 +259,9 @@ def grafico_multiseleccion(
         fig.update_layout(yaxis_title=None, xaxis_title="Porcentaje (%)")
         fig.update_xaxes(range=[0, data["Porcentaje"].max() * 1.18])
         hovertemplate = (
-            "%{y}<br>Porcentaje: %{x:.1f}%<br>"
-            f"<span style='color:{COLOR_DETALLE}'>Personas (ponderado): %{{customdata[0]:,.0f}}</span>"
+            "%{y}<br>Porcentaje: %{x:.1f}%"
+            # Detalle de personas (ponderado) deshabilitado a pedido; customdata queda
+            # disponible para reactivarlo agregando de nuevo el <span> con %{customdata[0]}.
             "<extra></extra>"
         )
         fig.update_traces(texttemplate="%{text}%", textposition="outside", hovertemplate=hovertemplate)
