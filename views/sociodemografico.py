@@ -18,7 +18,7 @@ from enma_palette import CHART_SEQUENCE
 
 PERIODO_RESIDENCIA_ORDEN = ["Hasta 5 años", "Entre 5 y 9 años", "Más de 10 años"]
 
-POBLACION_TOTAL_LABEL = "Población total"
+POBLACION_TOTAL_LABEL = "Población migrante total"
 
 
 def _nota_ponderacion_por_pais(df, columns_col):
@@ -27,7 +27,7 @@ def _nota_ponderacion_por_pais(df, columns_col):
     nota_ponderacion(
         n,
         "Países ponderados por nacionalidad; "
-        "Población total ponderada con el ponderador general",
+        "Población migrante total ponderada con el ponderador general",
     )
 
 

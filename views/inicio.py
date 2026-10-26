@@ -66,9 +66,13 @@ def render():
         with st.container(border=True, key="seccion_tablero"):
             st.subheader("Sobre este tablero")
             st.markdown(
-                "- Usa el ponderador por nacionalidad: permite ver diferencias entre nacionalidades "
-                "y dentro de cada una (solo para las nacionalidades con más casos).\n"
-                "- La fila **Población total** y los cruces que no son por nacionalidad usan el "
+                "- En los gráficos según país de origen, cada país usa el ponderador por "
+                "nacionalidad, que permite ver la distribución de una variable dentro de cada "
+                "nacionalidad. Solo diez nacionalidades tienen un ajuste propio (Venezuela, "
+                "Paraguay, Bolivia, Perú, Colombia, Chile, Brasil, Uruguay, Italia y España); en el "
+                "resto ese ponderador vale 1 y la fila muestra la distribución de las personas "
+                "encuestadas.\n"
+                "- La fila **Población migrante total** y todos los demás gráficos usan el "
                 "ponderador de estimaciones totales.\n"
                 "- Las bases de 2020 y 2023 no son integrables de manera automática (los "
                 "cuestionarios difieren en secciones, preguntas y opciones): cada edición se "
@@ -89,9 +93,27 @@ def render():
         st.markdown(
             "- Sitio de la ENMA: https://www.encuestamigrante.ar/\n"
             "- Bases públicas, documentación y código: https://github.com/natdebandi/ENMA\n"
-            "- Documento metodológico: [enlace pendiente]\n"
+            "- Documento metodológico: [nota metodológica del tablero](https://github.com/LuciaVazquez08/Test-ENMA#-nota-metodológica-ponderadores)\n"
             "- Anuario Migratorio Argentino 2024 (edición 2023): "
             "[anuario_enma_2023_vf.pdf](https://www.encuestamigrante.ar/wp-content/uploads/documentos/anuario_enma_2023_vf.pdf)\n"
-            "- Cómo citar: según el [README del repositorio](https://github.com/natdebandi/ENMA#cómo-citar)\n"
             "- Consultas sobre el tablero: [ndebandi@unsam.edu.ar](mailto:ndebandi@unsam.edu.ar)"
+        )
+
+    with st.container(border=True, key="seccion_citar"):
+        st.subheader("Cómo citar")
+        st.markdown(
+            "Según el [README del repositorio de la ENMA](https://github.com/natdebandi/ENMA#cómo-citar).\n\n"
+            "**Cita de la fuente**, en el formato que sugieren los documentos metodológicos:\n\n"
+            "> ENMA 2020. Encuesta Nacional Migrante de Argentina 2020 [Base de datos]. "
+            "Recuperado de https://encuestamigrante.ar/\n\n"
+            "> ENMA 2023 (06/2024). Encuesta Nacional Migrante de Argentina 2023 [Base de datos]. "
+            "Recuperado de https://encuestamigrante.ar/\n\n"
+            "**Cita de la versión publicada de cada base:**\n\n"
+            "> Encuesta Nacional Migrante de Argentina (2026). ENMA 2020. Base de datos, versión 1 "
+            "[Conjunto de datos]. https://github.com/natdebandi/ENMA/releases/tag/datos-2020-v1\n\n"
+            "> Encuesta Nacional Migrante de Argentina (2026). ENMA 2023. Base de datos, versión 3 "
+            "[Conjunto de datos]. https://github.com/natdebandi/ENMA/releases/tag/datos-2023-v3\n\n"
+            "La cita de cada versión no reemplaza la de la encuesta como fuente primaria. Para los "
+            "resultados publicados en el Anuario Migratorio Argentino corresponde citar el anuario "
+            "de la edición correspondiente."
         )

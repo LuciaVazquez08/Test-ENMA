@@ -43,7 +43,7 @@ Debajo de cada gráfico se indica el ponderador usado y el N (cantidad de person
 - **2023:** se muestran exactamente las diez nacionalidades con ajuste propio.
 - **"Otro" (ambos años):** junta nacionalidades con ponderador 1 y, en 2023, valores del ponderador intra nacionalidad que no corresponden a un ajuste de ese grupo. Su distribución debe leerse con cautela.
 
-Por decisión del tablero, todas las filas por país usan igualmente el ponderador intra nacionalidad, aunque valga 1, y solo la fila "Población total" usa el general.
+Por decisión del tablero, todas las filas por país usan igualmente el ponderador intra nacionalidad, aunque valga 1, y solo la fila "Población migrante total" usa el general.
 
 ## ⚙️ Instalación y Reproducibilidad
 
