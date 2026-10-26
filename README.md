@@ -34,13 +34,6 @@ El objetivo principal es proporcionar a investigadores, organismos y al público
 
 ## 📐 Nota metodológica: ponderadores
 
-Cada base trae dos ponderadores, que no son intercambiables:
-
-| Ponderador | 2020 | 2023 | Uso en el tablero |
-|---|---|---|---|
-| General | `pesos_para_estimaciones_totales` | `weightvec` | Todos los gráficos, salvo las filas por país de los cruces por nacionalidad. Incluye la fila "Población total" de esos cruces. |
-| Intra nacionalidad | `pesos_para_estimaciones_por_nacionalidad` | `weightvec_0` | Distribución de una variable dentro de cada país de origen (por ejemplo, género dentro de las personas paraguayas): todas las filas por país de los gráficos de la página "Datos sociodemográficos". |
-
 Debajo de cada gráfico se indica el ponderador usado y el N (cantidad de personas encuestadas, sin ponderar, con dato en la variable graficada). Los porcentajes se muestran sin decimales.
 
 **Los países del gráfico no coinciden con los que tienen ponderador intra nacionalidad.** Según la documentación de las bases, el ajuste intra nacionalidad solo se calculó para diez nacionalidades, las mismas en ambas ediciones: Venezuela, Paraguay, Bolivia, Perú, Colombia, Chile, Brasil, Uruguay, Italia y España. En cambio, los países que el tablero muestra por separado salen de la cantidad de casos de cada encuesta, y no coinciden con esa lista:
@@ -49,7 +42,7 @@ Debajo de cada gráfico se indica el ponderador usado y el N (cantidad de person
 - **2023:** se muestran exactamente las diez nacionalidades con ajuste propio.
 - **"Otro" (ambos años):** junta nacionalidades con ponderador 1 y, en 2023, valores del ponderador intra nacionalidad que no corresponden a un ajuste de ese grupo. Su distribución debe leerse con cautela.
 
-Por decisión del tablero, todas las filas por país usan igualmente el ponderador intra nacionalidad, aunque valga 1, y solo la fila "Población total" usa el general. Para las nacionalidades sin ajuste propio, el documento metodológico de 2023 recomienda trabajar en valores absolutos. Por eso, en esos casos la distribución por país describe a las personas encuestadas y no es una estimación poblacional.
+Por decisión del tablero, todas las filas por país usan igualmente el ponderador intra nacionalidad, aunque valga 1, y solo la fila "Población total" usa el general.
 
 ## ⚙️ Instalación y Reproducibilidad
 

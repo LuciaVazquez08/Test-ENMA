@@ -26,7 +26,7 @@ def _nota_ponderacion_por_pais(df, columns_col):
     n = int(df[["pais_nacimiento_var", columns_col]].notna().all(axis=1).sum())
     nota_ponderacion(
         n,
-        "Países ponderados por nacionalidad (ver nota metodológica en el README); "
+        "Países ponderados por nacionalidad; "
         "Población total ponderada con el ponderador general",
     )
 
