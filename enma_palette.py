@@ -77,7 +77,7 @@ def inject_fonts() -> None:
             padding-top: 1rem;
             padding-bottom: 1rem;
         }}
-        [class*="st-key-grafico_"] {{
+        [class*="st-key-grafico_"], [class*="st-key-seccion_"] {{
             border: 2px solid #000000 !important;
             border-radius: 12px !important;
             padding: 1.25rem !important;

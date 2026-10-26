@@ -7,6 +7,7 @@ from views import (
     educacion,
     familia_hogar,
     hijos_educacion,
+    inicio,
     participacion,
     salud,
     sociodemografico,
@@ -23,7 +24,8 @@ st.set_page_config(
 inject_fonts()
 
 paginas = [
-    st.Page(sociodemografico.render, title="Datos sociodemográficos", icon="🧑‍🤝‍🧑", url_path="datos-sociodemograficos", default=True),
+    st.Page(inicio.render, title="Inicio", icon="🌎", url_path="inicio", default=True),
+    st.Page(sociodemografico.render, title="Datos sociodemográficos", icon="🧑‍🤝‍🧑", url_path="datos-sociodemograficos"),
     st.Page(trayectoria_migratoria.render, title="Trayectoria y proyecto migratorio", icon="🧭", url_path="trayectoria-y-proyecto-migratorio"),
     st.Page(documentacion.render, title="Situación documentaria", icon="🪪", url_path="situacion-documentaria"),
     st.Page(familia_hogar.render, title="Situación familiar y hogar", icon="👪", url_path="situacion-familiar-y-hogar"),
