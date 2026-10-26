@@ -3,7 +3,7 @@ from pathlib import Path
 
 import streamlit as st
 
-from data_utils import aplicar_filtros, filtro_edicion, iniciar_filtros, load_data
+from data_utils import aplicar_filtros, filtro_edicion, formatear_n, iniciar_filtros, load_data
 
 RAIZ = Path(__file__).resolve().parent.parent
 
@@ -54,3 +54,4 @@ def render():
         conteo["Opción"] = conteo["Opción"].fillna("Sin dato").astype(str)
         with st.expander(f"{columna} ({len(conteo)} opciones)"):
             st.dataframe(conteo, use_container_width=True, hide_index=True)
+            st.caption(f"Datos sin ponderar. N = {formatear_n(len(df))}")

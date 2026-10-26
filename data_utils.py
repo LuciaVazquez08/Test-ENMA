@@ -10,6 +10,31 @@ DATA_PATH = "data/processed/ENMA.csv"
 
 COLOR_DETALLE = COLORS["text_3"]
 
+# Ponderadores muestrales (no son intercambiables, ver la documentación de cada base):
+# - General (weightvec en 2023 / pesos_para_estimaciones_totales en 2020): para todo lo que no es
+#   la distribución de una variable dentro de una nacionalidad (fila de población total, cruces que
+#   no son por nacionalidad, composición por país de origen).
+# - Intra nacionalidad (weightvec_0 en 2023 / pesos_para_estimaciones_por_nacionalidad en 2020):
+#   solo para ver una variable dentro de cada nacionalidad, y solo en las nacionalidades que tienen
+#   ese ajuste propio. Son las mismas diez en ambas ediciones; en el resto (Senegal, Haití,
+#   Ecuador, "Otro", etc.) el ponderador intra nacionalidad no corrige nada y se usa el general.
+PESO_TOTAL = "peso_muestral_total"
+PESO_NACIONALIDAD = "peso_muestral_nacionalidad"
+NACIONALIDADES_CON_PESO_PROPIO = [
+    "Venezuela", "Paraguay", "Bolivia", "Perú", "Colombia",
+    "Chile", "Brasil", "Uruguay", "Italia", "España",
+]
+
+
+def formatear_n(n: int) -> str:
+    return f"{n:,}".replace(",", ".")
+
+
+def nota_ponderacion(n: int, texto_ponderador: str = "Datos ponderados con el ponderador general"):
+    """Nota al pie de cada gráfico: ponderador usado y N (casos sin ponderar que entran en el
+    gráfico, es decir, quienes tienen dato en la variable graficada)."""
+    st.caption(f"{texto_ponderador}. N = {formatear_n(n)}")
+
 
 def aplicar_tipografia(fig):
     """DM Sans en negro puro para todos los textos del gráfico. El título va aparte, vía
@@ -134,14 +159,14 @@ def distribucion(
     df: pd.DataFrame,
     columna: str,
     orden: list | None = None,
-    columna_peso: str = "peso_muestral_total",
+    columna_peso: str = PESO_TOTAL,
 ) -> pd.DataFrame:
     """La magnitud de cada categoría se calcula como la suma del ponderador
     `columna_peso` en lugar del conteo crudo de filas, para que el porcentaje
     refleje la población estimada y no la composición de la muestra."""
     datos = df.dropna(subset=[columna])
     cantidad = datos.groupby(columna)[columna_peso].sum()
-    porcentaje = cantidad.div(cantidad.sum()).mul(100).round(1)
+    porcentaje = cantidad.div(cantidad.sum()).mul(100).round(0)
     if orden:
         indice = [c for c in orden if c in cantidad.index]
     else:
@@ -160,7 +185,7 @@ def grafico_barras(
     titulo: str,
     orden: list | None = None,
     horizontal: bool = False,
-    columna_peso: str = "peso_muestral_total",
+    columna_peso: str = PESO_TOTAL,
 ):
     with st.container(border=True, key=f"grafico_{columna}"):
         st.subheader(titulo)
@@ -179,7 +204,7 @@ def grafico_barras(
             fig.update_layout(yaxis_title=None, xaxis_title="Porcentaje (%)")
             fig.update_xaxes(range=[0, data["Porcentaje"].max() * 1.18])
             hovertemplate = (
-                "%{y}<br>Porcentaje: %{x:.1f}%"
+                "%{y}<br>Porcentaje: %{x:.0f}%"
                 # Detalle de personas (ponderado) deshabilitado a pedido; customdata queda
                 # disponible para reactivarlo agregando de nuevo el <span> con %{customdata[0]}.
                 "<extra></extra>"
@@ -193,15 +218,16 @@ def grafico_barras(
             fig.update_layout(xaxis_title=None, yaxis_title="Porcentaje (%)")
             fig.update_yaxes(range=[0, data["Porcentaje"].max() * 1.3])
             hovertemplate = (
-                "%{x}<br>Porcentaje: %{y:.1f}%"
+                "%{x}<br>Porcentaje: %{y:.0f}%"
                 # Detalle de personas (ponderado) deshabilitado a pedido; customdata queda
                 # disponible para reactivarlo agregando de nuevo el <span> con %{customdata[0]}.
                 "<extra></extra>"
             )
-        fig.update_traces(texttemplate="%{text}%", textposition="outside", hovertemplate=hovertemplate)
+        fig.update_traces(texttemplate="%{text:.0f}%", textposition="outside", hovertemplate=hovertemplate)
         fig.update_layout(margin=dict(t=25, b=25, l=15, r=15))
         aplicar_tipografia(fig)
         st.plotly_chart(fig, width="stretch")
+        nota_ponderacion(int(df[columna].notna().sum()))
 
 
 def _a_binario(serie: pd.Series) -> pd.Series:
@@ -220,7 +246,7 @@ def grafico_multiseleccion(
     opciones: list[tuple[str, str]],
     titulo: str,
     subtitulo: str,
-    columna_peso: str = "peso_muestral_total",
+    columna_peso: str = PESO_TOTAL,
 ):
     """Gráfico para preguntas de selección múltiple armonizadas en el ETL como un set de columnas
     booleanas (una por opción final, ver `construir_multiseleccion` en scripts/ETL.py): una barra
@@ -245,7 +271,7 @@ def grafico_multiseleccion(
             cantidad = (seleccionado * peso).sum()
             filas.append({
                 "Opción": etiqueta,
-                "Porcentaje": round(cantidad / total_peso * 100, 1),
+                "Porcentaje": round(cantidad / total_peso * 100),
                 "Cantidad": round(cantidad),
             })
         if not filas:
@@ -260,12 +286,13 @@ def grafico_multiseleccion(
         fig.update_layout(yaxis_title=None, xaxis_title="Porcentaje (%)")
         fig.update_xaxes(range=[0, data["Porcentaje"].max() * 1.18])
         hovertemplate = (
-            "%{y}<br>Porcentaje: %{x:.1f}%"
+            "%{y}<br>Porcentaje: %{x:.0f}%"
             # Detalle de personas (ponderado) deshabilitado a pedido; customdata queda
             # disponible para reactivarlo agregando de nuevo el <span> con %{customdata[0]}.
             "<extra></extra>"
         )
-        fig.update_traces(texttemplate="%{text}%", textposition="outside", hovertemplate=hovertemplate)
+        fig.update_traces(texttemplate="%{text:.0f}%", textposition="outside", hovertemplate=hovertemplate)
         fig.update_layout(margin=dict(t=25, b=25, l=15, r=15))
         aplicar_tipografia(fig)
         st.plotly_chart(fig, width="stretch")
+        nota_ponderacion(int(df[[c for c, _ in opciones]].notna().any(axis=1).sum()))

@@ -1,7 +1,11 @@
+import numpy as np
 import plotly.express as px
 import streamlit as st
 
 from data_utils import (
+    NACIONALIDADES_CON_PESO_PROPIO,
+    PESO_NACIONALIDAD,
+    PESO_TOTAL,
     aplicar_filtros,
     aplicar_tipografia,
     filtro_edicion,
@@ -10,34 +14,52 @@ from data_utils import (
     grafico_barras,
     iniciar_filtros,
     load_data,
+    nota_ponderacion,
 )
 from enma_palette import CHART_SEQUENCE
 
 PERIODO_RESIDENCIA_ORDEN = ["Hasta 5 años", "Entre 5 y 9 años", "Más de 10 años"]
 
-# Ponderadores muestrales: por nacionalidad (corrige la composición dentro de
-# cada país de origen) y total (corrige la composición de la población
-# migrante completa, entre países). No son intercambiables: los gráficos que
-# desagregan por país usan el primero fila por fila, y la fila de referencia
-# poblacional usa el segundo.
-PESO_NACIONALIDAD = "peso_muestral_nacionalidad"
-PESO_TOTAL = "peso_muestral_total"
-
 POBLACION_TOTAL_LABEL = "Población total"
 
 
-def _tabla_ponderada(df, index_col, columns_col, peso_pais, peso_poblacion, etiqueta_poblacion):
-    """Arma una tabla índice x columnas con los pesos muestrales sumados (no
-    conteo de filas), ordenada de menor a mayor magnitud, y agrega al final
-    una fila `etiqueta_poblacion` con la distribución de toda la población
-    filtrada (ponderada con `peso_poblacion`) como referencia. Devuelve el
-    porcentaje resultante por fila, el peso sumado (para el detalle de
-    "personas") y el orden final de categorías."""
-    pivot = df.groupby([index_col, columns_col])[peso_pais].sum().unstack(fill_value=0)
+def _peso_por_pais(df):
+    """Ponderador de cada fila para ver una variable dentro de cada nacionalidad: el intra
+    nacionalidad si la persona es de una de las nacionalidades que lo tienen, y el general si no
+    (ver NACIONALIDADES_CON_PESO_PROPIO en data_utils)."""
+    con_peso_propio = df["pais_nacimiento_var"].isin(NACIONALIDADES_CON_PESO_PROPIO)
+    return np.where(con_peso_propio, df[PESO_NACIONALIDAD], df[PESO_TOTAL])
+
+
+def _nota_ponderacion_por_pais(df, columns_col, orden):
+    """Nota al pie de los cruces por país: qué filas usan el ponderador por nacionalidad y cuáles
+    el general, más el N de casos con dato en el cruce."""
+    paises = [c for c in orden if c != POBLACION_TOTAL_LABEL]
+    con_peso = [c for c in paises if c in NACIONALIDADES_CON_PESO_PROPIO]
+    sin_peso = [c for c in paises if c not in NACIONALIDADES_CON_PESO_PROPIO] + [POBLACION_TOTAL_LABEL]
+    if con_peso:
+        texto = (
+            f"Datos ponderados por nacionalidad en {', '.join(con_peso)}; "
+            f"ponderador general en {', '.join(sin_peso)}"
+        )
+    else:
+        texto = "Datos ponderados con el ponderador general"
+    n = int(df[["pais_nacimiento_var", columns_col]].notna().all(axis=1).sum())
+    nota_ponderacion(n, texto)
+
+
+def _tabla_ponderada(df, index_col, columns_col, etiqueta_poblacion):
+    """Arma una tabla índice (país) x columnas con los pesos muestrales sumados (no conteo de
+    filas), ordenada de menor a mayor magnitud, y agrega al final una fila `etiqueta_poblacion`
+    con la distribución de toda la población filtrada como referencia. Cada país usa su ponderador
+    intra nacionalidad si lo tiene (general si no) y la fila de población usa el general.
+    Devuelve el porcentaje resultante por fila, el peso sumado y el orden final de categorías."""
+    df = df.assign(_peso_pais=_peso_por_pais(df))
+    pivot = df.groupby([index_col, columns_col])["_peso_pais"].sum().unstack(fill_value=0)
     orden = pivot.sum(axis=1).sort_values().index.tolist()
     pivot = pivot.loc[orden]
 
-    poblacion = df.groupby(columns_col)[peso_poblacion].sum().reindex(pivot.columns, fill_value=0)
+    poblacion = df.groupby(columns_col)[PESO_TOTAL].sum().reindex(pivot.columns, fill_value=0)
     pivot.loc[etiqueta_poblacion] = poblacion
 
     # Plotly invierte el orden de category_orders en gráficos horizontales (la primera categoría
@@ -46,7 +68,7 @@ def _tabla_ponderada(df, index_col, columns_col, peso_pais, peso_poblacion, etiq
     orden_final = [etiqueta_poblacion] + orden
     pivot = pivot.loc[orden_final]
 
-    tabla = pivot.div(pivot.sum(axis=1), axis=0).mul(100).round(1)
+    tabla = pivot.div(pivot.sum(axis=1), axis=0).mul(100).round(0)
     return tabla, pivot, orden_final
 
 
@@ -58,7 +80,7 @@ def _pais_por_genero(df):
     with st.container(border=True, key="grafico_pais_genero"):
         st.subheader("País de origen")
         tabla, conteo, orden = _tabla_ponderada(
-            df, "pais_nacimiento_var", "genero_agrup", PESO_NACIONALIDAD, PESO_TOTAL, POBLACION_TOTAL_LABEL,
+            df, "pais_nacimiento_var", "genero_agrup", POBLACION_TOTAL_LABEL,
         )
         data = tabla.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Género", value_name="Porcentaje")
         data_cantidad = conteo.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Género", value_name="Cantidad")
@@ -71,10 +93,10 @@ def _pais_por_genero(df):
             text="Porcentaje", custom_data=["Cantidad"],
         )
         fig.update_traces(
-            texttemplate="%{text}%", textposition="inside",
+            texttemplate="%{text:.0f}%", textposition="inside",
             # Detalle de personas (ponderado) deshabilitado a pedido; customdata queda
             # disponible para reactivarlo agregando de nuevo el <span> con %{customdata[0]}.
-            hovertemplate="%{y}<br>Porcentaje: %{x:.1f}%",
+            hovertemplate="%{y}<br>Porcentaje: %{x:.0f}%",
         )
         fig.update_layout(
             yaxis_title=None, xaxis_title="Porcentaje (%)",
@@ -83,13 +105,14 @@ def _pais_por_genero(df):
         aplicar_tipografia(fig)
         fig.update_yaxes(tickmode="array", tickvals=orden, ticktext=_ticktext_con_referencia(orden), tickfont=dict(size=9))
         st.plotly_chart(fig, width="stretch")
+        _nota_ponderacion_por_pais(df, "genero_agrup", orden)
 
 
 def _descendencia_por_pais(df):
     with st.container(border=True, key="grafico_descendencia"):
         st.subheader("Descendencia")
         tabla, conteo, orden = _tabla_ponderada(
-            df, "pais_nacimiento_var", "descendencia", PESO_NACIONALIDAD, PESO_TOTAL, POBLACION_TOTAL_LABEL,
+            df, "pais_nacimiento_var", "descendencia", POBLACION_TOTAL_LABEL,
         )
         data = tabla.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Descendencia", value_name="Porcentaje")
         data_cantidad = conteo.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Descendencia", value_name="Cantidad")
@@ -102,10 +125,10 @@ def _descendencia_por_pais(df):
             text="Porcentaje", custom_data=["Cantidad"],
         )
         fig.update_traces(
-            texttemplate="%{text}%", textposition="outside",
+            texttemplate="%{text:.0f}%", textposition="outside",
             # Detalle de personas (ponderado) deshabilitado a pedido; customdata queda
             # disponible para reactivarlo agregando de nuevo el <span> con %{customdata[0]}.
-            hovertemplate="%{y}<br>Porcentaje: %{x:.1f}%",
+            hovertemplate="%{y}<br>Porcentaje: %{x:.0f}%",
         )
         fig.update_layout(
             yaxis_title=None, xaxis_title="Porcentaje (%)",
@@ -115,14 +138,15 @@ def _descendencia_por_pais(df):
         fig.update_xaxes(range=[0, data["Porcentaje"].max() * 1.2])
         fig.update_yaxes(tickmode="array", tickvals=orden, ticktext=_ticktext_con_referencia(orden), tickfont=dict(size=9))
         st.plotly_chart(fig, width="stretch")
+        _nota_ponderacion_por_pais(df, "descendencia", orden)
 
 
 def _region_por_edad(df):
     with st.container(border=True, key="grafico_region_edad"):
         st.subheader("Región de residencia")
-        # No desagrega por país -> usar peso total
+        # No desagrega por país -> ponderador general
         conteo = df.groupby(["edad_agrupada", "region"])[PESO_TOTAL].sum().unstack(fill_value=0)
-        tabla = conteo.div(conteo.sum(axis=1), axis=0).mul(100).round(1)
+        tabla = conteo.div(conteo.sum(axis=1), axis=0).mul(100).round(0)
         data = tabla.reset_index().melt(id_vars="edad_agrupada", var_name="region", value_name="Porcentaje")
         data_cantidad = conteo.reset_index().melt(id_vars="edad_agrupada", var_name="region", value_name="Cantidad")
         data = data.merge(data_cantidad, on=["edad_agrupada", "region"])
@@ -132,10 +156,10 @@ def _region_por_edad(df):
             text="Porcentaje", custom_data=["Cantidad"],
         )
         fig.update_traces(
-            texttemplate="%{text}%", textposition="outside",
+            texttemplate="%{text:.0f}%", textposition="outside",
             # Detalle de personas (ponderado) deshabilitado a pedido; customdata queda
             # disponible para reactivarlo agregando de nuevo el <span> con %{customdata[0]}.
-            hovertemplate="%{x}<br>Porcentaje: %{y:.1f}%",
+            hovertemplate="%{x}<br>Porcentaje: %{y:.0f}%",
         )
         fig.update_layout(
             xaxis_title=None, yaxis_title="Porcentaje (%)",
@@ -143,6 +167,7 @@ def _region_por_edad(df):
         )
         aplicar_tipografia(fig)
         st.plotly_chart(fig, width="stretch")
+        nota_ponderacion(int(df[["edad_agrupada", "region"]].notna().all(axis=1).sum()))
 
 
 def render():
