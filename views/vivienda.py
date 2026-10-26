@@ -29,7 +29,7 @@ def render():
     st.title("Vivienda")
     st.caption("Tenencia de la vivienda y dificultades de acceso.")
 
-    grafico_barras(df, "vivienda_tenencia", "Condición de tenencia de la vivienda")
+    grafico_barras(df, "vivienda_tenencia", "Distribución por condición de tenencia de la vivienda")
 
     sin_dificultades = df["vivienda_dificultad_ninguna"] != True  # noqa: E712
     grafico_multiseleccion(

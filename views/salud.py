@@ -41,15 +41,15 @@ def render():
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        grafico_barras(df, "salud_cobertura", "Cobertura de salud")
+        grafico_barras(df, "salud_cobertura", "Distribución por cobertura de salud")
     with col2:
-        grafico_barras(df, "salud_problemas", "Tuvo algún problema de salud")
+        grafico_barras(df, "salud_problemas", "Distribución por problemas de salud")
     with col3:
-        grafico_barras(df, "salud_dificultad_acceso", "Frecuencia de dificultades para acceder a la salud")
+        grafico_barras(df, "salud_dificultad_acceso", "Distribución por frecuencia de dificultades para acceder a la salud")
 
     grafico_multiseleccion(
         df, FORMAS_ACCESO_SALUD,
-        "Formas de acceso a la atención de la salud",
+        "Distribución por formas de acceso a la atención de la salud",
         "Qué % de la población accedió (o intentó acceder) a la salud por cada vía en los últimos dos años (pregunta de selección múltiple).",
     )
 

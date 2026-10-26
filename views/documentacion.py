@@ -32,13 +32,13 @@ def render():
 
     col1, col2 = st.columns(2)
     with col1:
-        grafico_barras(df, "dni_tenencia", "Tenencia de DNI argentino")
+        grafico_barras(df, "dni_tenencia", "Distribución por tenencia de DNI argentino")
     with col2:
-        grafico_barras(df, "solicitud_asilo_refugio", "Solicitud de asilo, refugio o visado humanitario")
+        grafico_barras(df, "solicitud_asilo_refugio", "Distribución por solicitud de asilo, refugio o visado humanitario")
 
     grafico_multiseleccion(
         df, DIFICULTADES_DNI,
-        "Tipos de dificultades para tramitar o renovar el DNI",
+        "Distribución por tipos de dificultades para tramitar o renovar el DNI",
         "Qué % de quienes tuvieron dificultades declaró cada tipo. En la edición 2023 la pregunta "
         "admite selección múltiple (una persona puede haber tenido más de una dificultad); en "
         "2020 se relevó como selección única (una sola dificultad por persona).",

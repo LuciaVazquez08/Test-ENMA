@@ -37,13 +37,13 @@ def render():
 
     col1, col2 = st.columns(2)
     with col1:
-        grafico_barras(df, "nivel_educativo_agrup", "Máximo nivel educativo alcanzado")
+        grafico_barras(df, "nivel_educativo_agrup", "Distribución por máximo nivel educativo alcanzado")
     with col2:
-        grafico_barras(df, "estudiando_actualmente", "Está estudiando actualmente")
+        grafico_barras(df, "estudiando_actualmente", "Distribución por condición de estudio actual")
 
     grafico_multiseleccion(
         df, TIPO_ESTUDIO,
-        "Tipo de estudios que cursa actualmente",
+        "Distribución por tipo de estudios que cursa actualmente",
         "Qué % de quienes estudian actualmente cursa cada tipo de estudio. En la edición 2023 la "
         "pregunta admite selección múltiple (una persona puede cursar más de un tipo a la vez); "
         "en 2020 se relevó como selección única (un solo tipo por persona).",

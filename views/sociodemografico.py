@@ -176,6 +176,6 @@ def render():
     with col3:
         _region_por_edad(df)
     with col4:
-        grafico_barras(df, "idioma_var", "Lenguas habladas", horizontal=True, columna_peso=PESO_TOTAL)
+        grafico_barras(df, "idioma_var", "Distribución por lenguas habladas", horizontal=True, columna_peso=PESO_TOTAL)
     with col5:
-        grafico_barras(df, "periodo_residencia", "Años de residencia", orden=PERIODO_RESIDENCIA_ORDEN, columna_peso=PESO_TOTAL)
+        grafico_barras(df, "periodo_residencia", "Distribución por años de residencia", orden=PERIODO_RESIDENCIA_ORDEN, columna_peso=PESO_TOTAL)

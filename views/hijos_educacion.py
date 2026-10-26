@@ -30,9 +30,9 @@ def render():
 
     col1, col2 = st.columns(2)
     with col1:
-        grafico_barras(df, "hijos", "Tenencia de hijos/as")
+        grafico_barras(df, "hijos", "Distribución por tenencia de hijos/as")
     with col2:
-        grafico_barras(df, "asistencia_educacion", "Hijos/as que asisten actualmente a la escuela en Argentina")
+        grafico_barras(df, "asistencia_educacion", "Distribución por asistencia escolar de hijos/as en Argentina")
 
     sin_problemas = df["hijos_educacion_problema_ninguno"] != True  # noqa: E712
     grafico_multiseleccion(

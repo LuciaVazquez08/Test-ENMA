@@ -32,18 +32,18 @@ def render():
 
     grafico_multiseleccion(
         df, MOTIVOS_MIGRACION,
-        "Principales motivos para migrar a Argentina",
+        "Distribución por motivos para migrar a Argentina",
         "Qué % de la población declaró cada motivo entre sus razones para migrar (pregunta de selección múltiple: una persona puede tener más de un motivo).",
     )
 
     col1, col2 = st.columns(2)
     with col1:
-        grafico_barras(df, "vivio_otra_provincia", "Vivió antes en otra provincia argentina")
+        grafico_barras(df, "vivio_otra_provincia", "Distribución por residencia previa en otra provincia argentina")
     with col2:
-        grafico_barras(df, "mudanza_futura", "Proyecto migratorio para los próximos años")
+        grafico_barras(df, "mudanza_futura", "Distribución por proyecto migratorio para los próximos años")
 
     col3, col4 = st.columns(2)
     with col3:
-        grafico_barras(df, "migracion_reciente", "Migración reciente (llegada en los últimos años)")
+        grafico_barras(df, "migracion_reciente", "Distribución por migración reciente (llegada en los últimos años)")
     with col4:
-        grafico_barras(df, "situacion_vida_argentina", "Situación de vida en Argentina en los últimos dos años")
+        grafico_barras(df, "situacion_vida_argentina", "Distribución por situación de vida en Argentina en los últimos dos años")

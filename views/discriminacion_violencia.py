@@ -36,14 +36,14 @@ def render():
 
     col1, col2 = st.columns(2)
     with col1:
-        grafico_barras(df, "violencia_fuerza_seguridad", "Situaciones de violencia por parte de fuerzas de seguridad")
+        grafico_barras(df, "violencia_fuerza_seguridad", "Distribución por situaciones de violencia por parte de fuerzas de seguridad")
     with col2:
-        grafico_barras(df, "violencia_genero", "Situaciones de violencia por razones de género")
+        grafico_barras(df, "violencia_genero", "Distribución por situaciones de violencia por razones de género")
 
-    grafico_barras(df, "discriminacion_experimentada", "Experimentó discriminación")
+    grafico_barras(df, "discriminacion_experimentada", "Distribución por experiencia de discriminación")
 
     grafico_multiseleccion(
         df, AMBITOS_DISCRIMINACION,
-        "Ámbitos donde experimentó discriminación con mayor frecuencia",
+        "Distribución por ámbitos donde experimentó discriminación con mayor frecuencia",
         "Qué % de quienes fueron discriminados declaró cada ámbito (pregunta de selección múltiple: una persona puede haber sido discriminada en más de un ámbito).",
     )

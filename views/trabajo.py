@@ -31,24 +31,24 @@ def render():
 
     col1, col2 = st.columns(2)
     with col1:
-        grafico_barras(df, "situacion_ocupacional_agrup", "Situación ocupacional")
+        grafico_barras(df, "situacion_ocupacional_agrup", "Distribución por situación ocupacional")
     with col2:
-        grafico_barras(df, "trabajo_en_area_experiencia", "Trabaja en su área de experiencia o formación")
+        grafico_barras(df, "trabajo_en_area_experiencia", "Distribución por trabajo en su área de experiencia o formación")
 
-    grafico_barras(df, "dificultad_trabajo_experiencia", "Tuvo dificultad para conseguir un trabajo acorde a su experiencia")
+    grafico_barras(df, "dificultad_trabajo_experiencia", "Distribución por dificultad para conseguir un trabajo acorde a su experiencia")
 
-    grafico_barras(df, "circuitos_laborales", "Circuito laboral de inserción", horizontal=True)
+    grafico_barras(df, "circuitos_laborales", "Distribución por circuito laboral de inserción", horizontal=True)
 
     grafico_multiseleccion(
         df, DIFICULTADES_TRABAJO_EXPERIENCIA,
-        "Principales dificultades para acceder a un trabajo acorde a su experiencia",
+        "Distribución por dificultades para acceder a un trabajo acorde a su experiencia",
         "Qué % de quienes tuvieron dificultades declaró cada tipo (pregunta de selección múltiple: una persona puede haber tenido más de una).",
     )
 
     col3, col4, col5 = st.columns(3)
     with col3:
-        grafico_barras(df, "envia_dinero_exterior", "Envía dinero al exterior")
+        grafico_barras(df, "envia_dinero_exterior", "Distribución por envío de dinero al exterior")
     with col4:
-        grafico_barras(df, "recibe_ayuda_economica", "Recibe ayuda económica o alimentaria")
+        grafico_barras(df, "recibe_ayuda_economica", "Distribución por recepción de ayuda económica o alimentaria")
     with col5:
-        grafico_barras(df, "dificultad_gestion_subsidios", "Dificultad para gestionar subsidios o prestaciones")
+        grafico_barras(df, "dificultad_gestion_subsidios", "Distribución por dificultad para gestionar subsidios o prestaciones")

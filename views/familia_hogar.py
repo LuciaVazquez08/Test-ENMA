@@ -31,8 +31,8 @@ def render():
 
     col1, col2 = st.columns(2)
     with col1:
-        grafico_barras(df, "hogar_convivencia", "Convivencia con cónyuge o pareja")
+        grafico_barras(df, "hogar_convivencia", "Distribución por convivencia con cónyuge o pareja")
     with col2:
-        grafico_barras(df, "hogar_discapacidad", "Hogar con alguna persona con discapacidad")
+        grafico_barras(df, "hogar_discapacidad", "Distribución por presencia de personas con discapacidad en el hogar")
 
-    grafico_barras(df, "hogar_personas_agrup", "Cantidad de personas en el hogar", orden=HOGAR_PERSONAS_ORDEN)
+    grafico_barras(df, "hogar_personas_agrup", "Distribución por cantidad de personas en el hogar", orden=HOGAR_PERSONAS_ORDEN)
