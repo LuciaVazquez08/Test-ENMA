@@ -196,8 +196,7 @@ def run_etl():
     # Bases públicas anonimizadas de la ENMA (https://github.com/natdebandi/ENMA): 2020 v1 y
     # 2023 v3 (el archivo de la release 2023 v3 se llama ENMA2023_anonima_v4.csv). No traen
     # identificadores, fecha, provincia, localidad, barrio ni los textos libres de "Otros"; la
-    # geografía disponible es la región (region_amba_agrup). La integridad de cada archivo se
-    # verifica contra data/raw/SHA256SUMS.txt.
+    # geografía disponible es la región (region_amba_agrup).
     df_2020 = pd.read_csv('data/raw/ENMA2020_anonima_v1.csv', low_memory=False)
     df_2023 = pd.read_csv('data/raw/ENMA2023_anonima_v4.csv', low_memory=False)
     

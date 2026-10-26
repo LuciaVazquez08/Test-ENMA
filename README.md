@@ -27,7 +27,7 @@ El objetivo principal es proporcionar a investigadores, organismos y al público
 
 - `app.py`: Aplicación principal de Streamlit.
 - `scripts/`: Scripts de Python para la limpieza y transformación de datos.
-- `data/raw/`: Bases públicas anonimizadas de la ENMA, tal como se publican en [natdebandi/ENMA](https://github.com/natdebandi/ENMA): `ENMA2020_anonima_v1.csv` ([release datos-2020-v1](https://github.com/natdebandi/ENMA/releases/tag/datos-2020-v1)) y `ENMA2023_anonima_v4.csv` ([release datos-2023-v3](https://github.com/natdebandi/ENMA/releases/tag/datos-2023-v3)), con `SHA256SUMS.txt` para verificar su integridad. No incluyen identificadores, fecha, provincia, localidad, barrio ni textos libres de "Otros"; el nivel territorial disponible es la región.
+- `data/raw/`: Bases públicas anonimizadas de la ENMA, tal como se publican en [natdebandi/ENMA](https://github.com/natdebandi/ENMA): `ENMA2020_anonima_v1.csv` ([release datos-2020-v1](https://github.com/natdebandi/ENMA/releases/tag/datos-2020-v1)) y `ENMA2023_anonima_v4.csv` ([release datos-2023-v3](https://github.com/natdebandi/ENMA/releases/tag/datos-2023-v3)). No incluyen identificadores, fecha, provincia, localidad, barrio ni textos libres de "Otros"; el nivel territorial disponible es la región.
 - `data/processed/`: Dataset final armonizado utilizado por el tablero.
 - `views/`: Las distintas paginas dentro del tablero..
 - `requirements.txt`: Lista de dependencias con versiones específicas.
