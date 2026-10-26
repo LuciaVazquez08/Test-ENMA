@@ -2,7 +2,6 @@ import streamlit as st
 
 from enma_palette import inject_fonts
 from views import (
-    control,
     discriminacion_violencia,
     documentacion,
     educacion,
@@ -35,7 +34,6 @@ paginas = [
     st.Page(trabajo.render, title="Situación socioeconómica", icon="💼", url_path="situacion-socioeconomica"),
     st.Page(discriminacion_violencia.render, title="Discriminación y violencia", icon="⚠️", url_path="discriminacion-y-violencia"),
     st.Page(participacion.render, title="Participación social y política", icon="🗳️", url_path="participacion-social-y-politica"),
-    st.Page(control.render, title="Control", icon="🛠️", url_path="control"),
 ]
 
 navegacion = st.navigation(paginas)

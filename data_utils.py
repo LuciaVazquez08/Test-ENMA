@@ -15,15 +15,10 @@ COLOR_DETALLE = COLORS["text_3"]
 #   la distribución de una variable dentro de una nacionalidad (fila de población total, cruces que
 #   no son por nacionalidad, composición por país de origen).
 # - Intra nacionalidad (weightvec_0 en 2023 / pesos_para_estimaciones_por_nacionalidad en 2020):
-#   solo para ver una variable dentro de cada nacionalidad, y solo en las nacionalidades que tienen
-#   ese ajuste propio. Son las mismas diez en ambas ediciones; en el resto (Senegal, Haití,
-#   Ecuador, "Otro", etc.) el ponderador intra nacionalidad no corrige nada y se usa el general.
+#   para ver una variable dentro de cada nacionalidad. Se aplica a todas las filas por país, aunque
+#   solo diez nacionalidades tienen un ajuste propio (ver la nota metodológica del README).
 PESO_TOTAL = "peso_muestral_total"
 PESO_NACIONALIDAD = "peso_muestral_nacionalidad"
-NACIONALIDADES_CON_PESO_PROPIO = [
-    "Venezuela", "Paraguay", "Bolivia", "Perú", "Colombia",
-    "Chile", "Brasil", "Uruguay", "Italia", "España",
-]
 
 
 def formatear_n(n: int) -> str:
