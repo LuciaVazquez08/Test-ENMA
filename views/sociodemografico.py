@@ -61,7 +61,7 @@ def _ticktext_con_referencia(orden):
 
 def _pais_por_genero(df):
     with st.container(border=True, key="grafico_pais_genero"):
-        st.subheader("País de origen")
+        st.subheader("Composición por género según país de origen")
         tabla, conteo, orden = _tabla_ponderada(
             df, "pais_nacimiento_var", "genero_agrup", POBLACION_TOTAL_LABEL,
         )
@@ -93,7 +93,7 @@ def _pais_por_genero(df):
 
 def _descendencia_por_pais(df):
     with st.container(border=True, key="grafico_descendencia"):
-        st.subheader("Descendencia")
+        st.subheader("Descendencia según país de origen")
         tabla, conteo, orden = _tabla_ponderada(
             df, "pais_nacimiento_var", "descendencia", POBLACION_TOTAL_LABEL,
         )
@@ -126,7 +126,7 @@ def _descendencia_por_pais(df):
 
 def _region_por_edad(df):
     with st.container(border=True, key="grafico_region_edad"):
-        st.subheader("Región de residencia")
+        st.subheader("Región de residencia según rango etario")
         # No desagrega por país -> ponderador general
         conteo = df.groupby(["edad_agrupada", "region"])[PESO_TOTAL].sum().unstack(fill_value=0)
         tabla = conteo.div(conteo.sum(axis=1), axis=0).mul(100).round(0)
