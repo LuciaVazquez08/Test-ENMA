@@ -193,10 +193,13 @@ def mapear_hijos_2023(row):
 
 
 def run_etl():
-    df_2020 = pd.read_csv('data/raw/ENMA_2020.csv', sep=';')
-    df_2023 = pd.read_csv('data/raw/ENMA_2023.csv', sep=';', low_memory=False)
-
-    df_2020.rename(columns={'Id': 'ID'}, inplace=True)
+    # Bases públicas anonimizadas de la ENMA (https://github.com/natdebandi/ENMA): 2020 v1 y
+    # 2023 v3 (el archivo de la release 2023 v3 se llama ENMA2023_anonima_v4.csv). No traen
+    # identificadores, fecha, provincia, localidad, barrio ni los textos libres de "Otros"; la
+    # geografía disponible es la región (region_amba_agrup). La integridad de cada archivo se
+    # verifica contra data/raw/SHA256SUMS.txt.
+    df_2020 = pd.read_csv('data/raw/ENMA2020_anonima_v1.csv', low_memory=False)
+    df_2023 = pd.read_csv('data/raw/ENMA2023_anonima_v4.csv', low_memory=False)
     
     #EDAD
     df_2020['edad_agrupada'] = pd.cut(df_2020['q2_edad'], bins=[0, 17, 29, 44, 64, 10000], labels=['0-17', '18-29', '30-44', '45-64', '65+'])
@@ -243,75 +246,19 @@ def run_etl():
     df_2023.drop(columns=['q5_descendencia_afro', 'q5_descendencia_indigena', 'q5_descendencia_asiatica', 'q5_descendencia_ninguno', 'q5_descendencia_otro'], inplace=True)
 
     # REGION
-
-    PARTIDOS_AMBA = {
-        "tigre", "san fernando", "san isidro", "vicente lopez", "vicente lópez",
-        "general san martin", "general san martín", "gral san martin", "gral. san martín",
-        "tres de febrero", "hurlingham", "ituzaingo", "ituzaingó",
-        "moron", "la matanza", "merlo", "moreno",
-        "jose c paz", "josé c paz", "jose c. paz", "josé c. paz",
-        "malvinas argentinas", "san miguel",
-        "avellaneda", "lanus", "lanús", "quilmes", "berazategui",
-        "florencio varela", "almirante brown", "lomas de zamora",
-        "esteban echeverria", "esteban echeverría", "ezeiza",
-    }
-
-    PROVINCIA_A_REGION = {
-        "Ciudad de Buenos Aires (CABA)": "AMBA",
-        "Córdoba":           "Región Pampeana",
-        "Santa Fe":          "Región Pampeana",
-        "Entre Ríos":        "Región Pampeana",
-        "La Pampa":          "Región Pampeana",
-        "Mendoza":           "Cuyo",
-        "San Juan":          "Cuyo",
-        "San Luis":          "Cuyo",
-        "Río Negro":         "Patagonia",
-        "Neuquén":           "Patagonia",
-        "Chubut":            "Patagonia",
-        "Santa Cruz":        "Patagonia",
-        "Tierra del Fuego, Antártida e Islas del Atlántico Sur": "Patagonia",
-        "Misiones":          "NEA",
-        "Chaco":             "NEA",
-        "Corrientes":        "NEA",
-        "Formosa":           "NEA",
-        "Salta":             "NOA",
-        "Jujuy":             "NOA",
-        "Tucumán":           "NOA",
-        "Santiago del Estero": "NOA",
-        "Catamarca":         "NOA",
-        "La Rioja":          "NOA",
-    }
-
-    def normalize(text: str) -> str:
-        if not isinstance(text, str):
-            return ""
-        text = text.lower().strip()
-        text = unicodedata.normalize("NFD", text)
-        text = "".join(c for c in text if unicodedata.category(c) != "Mn")
-        text = re.sub(r"[.\-_]", " ", text)
-        text = re.sub(r"\s+", " ", text).strip()
-        return text
-
-    def is_amba_localidad(localidad: str) -> bool:
-        n = normalize(localidad)
-        return any(
-            n == p or n in p or p in n
-            for p in PARTIDOS_AMBA 
-        )
-
-    def get_region(provincia: str, localidad: str) -> str | None:
-        if provincia == "Buenos Aires (Provincia)":
-            return "AMBA" if is_amba_localidad(localidad) else "Región Pampeana"
-        return PROVINCIA_A_REGION.get(provincia)
-    
-    df_2020["region"] = df_2020.apply(lambda r: get_region(r["q7_provincia_res"], r["q8_localidad"]), axis=1)
-    df_2020.drop(columns=['q7_provincia_res', 'q8_localidad'], inplace=True)
+    # Las bases públicas solo publican la región de residencia (las mismas seis categorías en ambas
+    # ediciones). En 2020 hay además una categoría residual "Sin clasificar" (57 casos de Provincia
+    # de Buenos Aires sin localidad asignable), que se conserva tal cual para no alterar los totales.
+    df_2020['region'] = df_2020['region_amba_agrup']
+    df_2020.drop(columns=['region_amba_agrup'], inplace=True)
 
     df_2023['region'] = df_2023['region_amba_agrup']
-    df_2023.drop(columns=['region_amba_agrup', 'q8_provincia_res', 'q9_localidad', 'q10_barrio'], inplace=True)
+    df_2023.drop(columns=['region_amba_agrup'], inplace=True)
 
     #VIVIO EN OTRA PROVINCIA
-    df_2020.rename(columns={'q9_otra_provincia': 'vivio_otra_provincia'}, inplace=True)
+    # La base pública 2020 retira q9 (residencia previa en otra provincia); queda sin dato para ese
+    # año. La 2023 conserva q11, que es binaria y no registra dónde vivió.
+    df_2020['vivio_otra_provincia'] = np.nan
     df_2023.rename(columns={'q11_otra_provincia': 'vivio_otra_provincia'}, inplace=True)
 
     #MUDANZA
@@ -333,7 +280,7 @@ def run_etl():
     df_2020["migracion_reciente"] = np.where(df_2020['q10_anios_res'] == 'Entre 1 y 2 años', 'si', np.where(df_2020['q10_anios_res'] == 'Menos de 1 año', 'si', 'no'))
     df_2020.drop(columns=['q10_anios_res', 'tiempo_i'], inplace=True)
 
-    df_2023["periodo_residencia"] = df_2023['tiempo_residencia_agrup'].replace({'2 10 años o +': 'Más de 10 años', '1 De 6 a 9 años': 'Entre 5 y 9 años', '0 Hasta 5 años': 'Hasta 5 años'})
+    df_2023["periodo_residencia"] = df_2023['tiempo_residencia_agrup'].replace({'2 Más de 10 años': 'Más de 10 años', '1 Entre 5 y 9 años': 'Entre 5 y 9 años', '0 Hasta 5 años': 'Hasta 5 años'})
     df_2023["migracion_reciente"] = np.where(df_2023['q13_anio_llegada'] == 2022, 'si', np.where(df_2023['q13_anio_llegada'] == 2021, 'si', np.where(df_2023['q13_anio_llegada'] == 2023, 'si', 'no')))
     df_2023.drop(columns=['q13_anio_llegada','tiempo_residencia_agrup'], inplace=True)
 
@@ -347,64 +294,17 @@ def run_etl():
     df_2020.drop(columns=['q11_motivos_otros'], inplace=True)
 
     df_2020.drop(columns=['q11_motivos_proyecto_otro','q11_motivos_familia','q11_motivos_estudio', 'q11_motivos_experiencias', 'q11_motivos_trabajo', 'q11_motivos_discriminacion', 'q11_motivos_violencias', 'q11_motivos_salud', 'q11_motivos_sit_economica'], inplace=True)
-    detalle = df_2023["q14_motivos_otros_detalle"].fillna('').str.lower()
-
+    # La base pública no incluye el texto libre de "Otros" (q14_motivos_otros_detalle), así que
+    # ya no se reclasifican esas respuestas en las categorías cerradas: "Otros" cuenta como
+    # motivo_otro, igual que en 2020.
     df_2023["motivo_estudios_nuevas_experiencias"] = np.where((df_2023['q14_motivos_estudio'] == 1) | (df_2023['q14_motivos_nuevas_experiencias'] == 1), 1, 0)
-    df_2023['motivo_estudios_nuevas_experiencias'] = np.where(
-        (df_2023['motivo_estudios_nuevas_experiencias'] == 1) |
-        detalle.str.contains(
-            'estudi|doctorado|seminar|jesuita|religios|intercambio|cultura|viajar|experiencia|idioma',
-            regex=True
-        ),
-        1, 0
-    )
-    df_2023['motivo_mejor_trabajo'] = np.where(
-        (df_2023['q14_motivos_mejor_trabajo'] == 1) |
-        detalle.str.contains(
-            'trabajo|laboral|empresa|expatri|designación|startup|camionero',
-            regex=True
-        ),
-        1, 0
-    )
+    df_2023["motivo_mejor_trabajo"] = np.where(df_2023['q14_motivos_mejor_trabajo'] == 1, 1, 0)
     df_2023["motivo_violencias_persecuciones"] = np.where((df_2023['q14_motivos_violencia_genero'] == 1) | (df_2023['q14_motivos_orientacion_sexual'] == 1) | (df_2023['q14_motivos_persecucion'] == 1), 1, 0)
-    df_2023['motivo_violencias_persecuciones'] = np.where(
-        (df_2023['motivo_violencias_persecuciones'] == 1) |
-        detalle.str.contains(
-            'violencia|guerra|dictadura|chavismo|terrorismo|persec|xenofobia|inseguridad|comunismo',
-            regex=True
-        ),
-        1, 0
-    )
     df_2023["motivo_necesidades_basicas"] = np.where((df_2023['q14_motivos_salud'] == 1) | (df_2023['q14_motivos_necesidades_basicas'] == 1), 1, 0)
-    df_2023["motivo_familiar"] = np.where(
-        (df_2023['q14_motivos_reunificacion'] == 1) |
-        (df_2023['q14_motivos_acompañar_otrx'] == 1) |
-        (detalle.str.contains(
-            'amor|pareja|novio|novia|espos|marid|casa|matrimonio|familia|padre|madre|hijo|me trajeron|menor|conyuge',
-            regex=True
-        )),
-        1,0)
+    df_2023["motivo_familiar"] = np.where((df_2023['q14_motivos_reunificacion'] == 1) | (df_2023['q14_motivos_acompañar_otrx'] == 1), 1, 0)
     df_2023["motivos_habitat"] = df_2023['q14_motivos_habitat']
-
-    df_2023['motivo_necesidades_basicas'] = np.where(
-        (df_2023['motivo_necesidades_basicas'] == 1) |
-        detalle.str.contains(
-            'calidad de vida|escasez|servicios|inflación|econom|salud|cáncer|comida|futuro mejor',
-            regex=True
-        ),
-        1, 0
-    )
-    df_2023["motivo_otro"] = np.where(
-        (df_2023["motivo_estudios_nuevas_experiencias"] == 0) &
-        (df_2023["motivo_mejor_trabajo"] == 0) &
-        (df_2023["motivo_violencias_persecuciones"] == 0) &
-        (df_2023["motivo_necesidades_basicas"] == 0) &
-        (df_2023["motivo_familiar"] == 0) &
-        (df_2023["motivos_habitat"] == 0),
-        1,
-        0
-    )
-    df_2023.drop(columns=['q14_motivos_otros', 'q14_motivos_otros_detalle','q14_motivos','q14_motivos_estudio', 'q14_motivos_nuevas_experiencias', 'q14_motivos_mejor_trabajo', 'q14_motivos_violencia_genero', 'q14_motivos_orientacion_sexual', 'q14_motivos_persecucion', 'q14_motivos_salud', 'q14_motivos_necesidades_basicas', 'q14_motivos_reunificacion', 'q14_motivos_acompañar_otrx', 'q14_motivos_habitat'], inplace=True)
+    df_2023["motivo_otro"] = np.where(df_2023['q14_motivos_otros'] == 1, 1, 0)
+    df_2023.drop(columns=['q14_motivos_otros', 'q14_motivos','q14_motivos_estudio', 'q14_motivos_nuevas_experiencias', 'q14_motivos_mejor_trabajo', 'q14_motivos_violencia_genero', 'q14_motivos_orientacion_sexual', 'q14_motivos_persecucion', 'q14_motivos_salud', 'q14_motivos_necesidades_basicas', 'q14_motivos_reunificacion', 'q14_motivos_acompañar_otrx', 'q14_motivos_habitat'], inplace=True)
 
     #HIJOS
     df_2020["hijos"] = df_2020['q19_hijes']
@@ -470,11 +370,11 @@ def run_etl():
         'q33_incoveniente_educacion', 'q33_incoveniente_educacion_no', 'q33_incoveniente_educacion_cupo',
         'q33_inconveniente_educacion_inscripcion', 'q33_inconveniente_educacion_dni',
         'q33_inconveniente_educacion_documentacion_origen', 'q33_inconveniente_educacion_documentacion_argentina',
-        'q33_inconveniente_educacion_otro', 'q33_especificar_educacion'
+        'q33_inconveniente_educacion_otro'
     ], inplace=True)
 
     #VALIDAR: pregunta nueva en 2023 (condicional), sin equivalente en 2020. Se elimina por ahora.
-    df_2023.drop(columns=['q34_asistencia_educacion_razon', 'q34_especificar_razon'], inplace=True)
+    df_2023.drop(columns=['q34_asistencia_educacion_razon'], inplace=True)
 
     #VALIDAR: pregunta nueva en 2023, sin equivalente en 2020. Se elimina por ahora.
     df_2023.drop(columns=['q35_educacion_discriminacion'], inplace=True)
@@ -711,7 +611,7 @@ def run_etl():
     #VIVIENDA
     # Tablero: no incluir estas preguntas.
     df_2020.drop(columns=['q31_vivienda_tipo'], inplace=True)
-    df_2023.drop(columns=['q41_vivienda_lugar', 'q42_vivienda_tipo', 'q42_vivienda_especificar'], inplace=True)
+    df_2023.drop(columns=['q41_vivienda_lugar', 'q42_vivienda_tipo'], inplace=True)
 
     df_2020['vivienda_tenencia'] = df_2020['q32_vivienda_condicion'].replace({
         'Alquiler con contrato': 'Alquiler con contrato formal',
@@ -720,10 +620,8 @@ def run_etl():
     })
     df_2020.drop(columns=['q32_vivienda_condicion'], inplace=True)
 
-    #VALIDAR: en 2023 la categoría "Otro" viene acompañada de un campo de texto libre
-    # (q43_vivienda_es_especificar) que no se recodifica; se descarta y se mantiene "Otro" tal cual.
     df_2023['vivienda_tenencia'] = df_2023['q43_vivienda_es']
-    df_2023.drop(columns=['q43_vivienda_es', 'q43_vivienda_es_especificar'], inplace=True)
+    df_2023.drop(columns=['q43_vivienda_es'], inplace=True)
 
     #DIFICULTADES DE ACCESO A LA VIVIENDA (selección múltiple, armonizada)
     # "Conflictos habitacionales" (desalojo, estafa) es una categoría nueva de 2023, sin
@@ -754,7 +652,7 @@ def run_etl():
         'q44_vivienda_problemas', 'q44_vivienda_problemas_no', 'q44_vivienda_problemas_precio',
         'q44_vivienda_problemas_discriminacion', 'q44_vivienda_problemas_garantia', 'q44_vivienda_problemas_compra',
         'q44_vivienda_problemas_ayudasocial', 'q44_vivienda_problemas_desalojo', 'q44_vivienda_problemas_estafa',
-        'q44_vivienda_problemas_otra', 'q44_vivienda_problemas_otra_especificar'
+        'q44_vivienda_problemas_otra'
     ], inplace=True)
 
     # Tablero: no incluir estas preguntas.
@@ -839,6 +737,8 @@ def run_etl():
     ], inplace=True)
 
     #INCONVENIENTES DE INSCRIPCION AL ESTUDIO (selección múltiple, armonizada)
+    # La base pública 2020 retira q40_inscripcion_otros (texto libre), así que en 2020 "otros"
+    # solo reúne documentación de origen y equivalencias.
     #VALIDAR: "problemas con documentación del país de origen"/"equivalencias" (2020) y
     # "documentación escolar argentina"/"costos"/"títulos y competencias del país de origen" (2023)
     # no tienen categoría propia en el tablero, se agrupan en "otros".
@@ -847,12 +747,11 @@ def run_etl():
         'inscripcion_estudio_dni': ['q40_inscripcion_dni'],
         'inscripcion_estudio_discriminacion': ['q40_inscripcion_requisitos'],
         'inscripcion_estudio_inscripcion': ['q40_inscripcion_online'],
-        'inscripcion_estudio_otros': ['q40_inscripcion_documentacion', 'q40_inscripcion_equivalencias', 'q40_inscripcion_otros'],
+        'inscripcion_estudio_otros': ['q40_inscripcion_documentacion', 'q40_inscripcion_equivalencias'],
     })
     df_2020.drop(columns=[
         'q40_inscripcion_no', 'q40_inscripcion_dni', 'q40_inscripcion_requisitos',
-        'q40_inscripcion_documentacion', 'q40_inscripcion_equivalencias', 'q40_inscripcion_online',
-        'q40_inscripcion_otros'
+        'q40_inscripcion_documentacion', 'q40_inscripcion_equivalencias', 'q40_inscripcion_online'
     ], inplace=True)
 
     df_2023 = construir_multiseleccion(df_2023, {
@@ -904,12 +803,11 @@ def run_etl():
     }
     df_2023['situacion_ocupacional_agrup'] = df_2023['q51_situacion_ocupacional'].replace(mapa_situacion_ocupacional_2023)
     df_2023['situacion_ocupacional_agrup'] = df_2023['situacion_ocupacional_agrup'].fillna('Otra')
-    df_2023.drop(columns=['q51_situacion_ocupacional', 'q51_situacion_ocupacional_esp'], inplace=True)
+    df_2023.drop(columns=['q51_situacion_ocupacional'], inplace=True)
 
     #CIRCUITOS LABORALES
-    #VALIDAR: en 2023 "circuitos_laborales" ya viene calculada en la base (probablemente construida
-    # a partir del texto libre de q54_ocupacion), por lo que se conserva tal cual y se descarta el
-    # texto libre. En 2020 no existe esa variable, así que se construye a partir de las 14 categorías
+    #VALIDAR: en 2023 "circuitos_laborales" ya viene calculada en la base pública (que no incluye el
+    # texto libre de ocupación), por lo que se conserva tal cual. En 2020 no existe esa variable, así que se construye a partir de las 14 categorías
     # cerradas de q44_ocupacion, mapeándolas a los mismos 5 circuitos de 2023. Este mapeo es una
     # interpretación propia (varias categorías podrían encuadrar en más de un circuito) y debe ser
     # validada por el equipo de coordinación. La categoría "Otra (especifique)" de 2020 —la más
@@ -931,9 +829,7 @@ def run_etl():
         'Otra (especifique)': np.nan
     }
     df_2020['circuitos_laborales'] = df_2020['q44_ocupacion'].replace(mapa_circuitos_2020)
-    df_2020.drop(columns=['q44_ocupacion', 'q44_ocupacion_otra'], inplace=True)
-
-    df_2023.drop(columns=['q54_ocupacion'], inplace=True)
+    df_2020.drop(columns=['q44_ocupacion'], inplace=True)
 
     #TRABAJO EN AREA DE EXPERIENCIA
     df_2020['trabajo_en_area_experiencia'] = df_2020['q46_trabajo_experiencia'].replace({
@@ -1020,7 +916,7 @@ def run_etl():
         'q52_programas_auh', 'q52_programas_jubilacion', 'q52_programas_pension',
         'q52_programas_discpacidad', 'q52_programas_progresar', 'q52_programas_provincial',
         'q52_programas_comedor', 'q52_programas_puam', 'q52_programas_subsidio',
-        'q52_programas_comida', 'q52_programas_monotributo', 'q52_programas_otro'
+        'q52_programas_comida', 'q52_programas_monotributo'
     ]
 
     def resolver_recibe_ayuda_2020(row):
@@ -1058,7 +954,7 @@ def run_etl():
         'q60_subsidios_jubilacion', 'q60_subsidios_pension', 'q60_subsidios_pension_no_contrib',
         'q60_subsidios_progresar', 'q60_subsidios_potenciar_trabajo', 'q60_subsidios_inclusion_joven',
         'q60_subsidios_tarjeta_alimentar', 'q60_subsidios_pieza', 'q60_subsidios_desempleo',
-        'q60_subsidios_otro', 'q60_subsidios_prefiero_no', 'q60_subsidios_especificar'
+        'q60_subsidios_otro', 'q60_subsidios_prefiero_no'
     ], inplace=True)
 
     #VALIDAR: pregunta nueva de 2023, sin equivalente en 2020 (queda en NaN para ese año).
@@ -1100,13 +996,13 @@ def run_etl():
         'discriminacion_lugar_calle': ['q54_lugares_calle'],
         'discriminacion_lugar_grupos_sociales': ['q54_lugares_grupos'],
         'discriminacion_lugar_medios': ['q54_lugares_medios'],
-        'discriminacion_lugar_otros': ['q54_lugares_otros'],
     })
+    # La base pública 2020 retira q54_lugares_otros (texto libre): "Otros" queda sin dato en 2020.
+    df_2020['discriminacion_lugar_otros'] = np.nan
     df_2020['discriminacion_lugar_fuerzas_seguridad'] = np.nan
     df_2020.drop(columns=[
         'q54_lugares_estado', 'q54_lugares_salud', 'q54_lugares_estudio', 'q54_lugares_calle',
-        'q54_lugares_trabajo', 'q54_lugares_grupos', 'q54_lugares_transporte', 'q54_lugares_medios',
-        'q54_lugares_otros'
+        'q54_lugares_trabajo', 'q54_lugares_grupos', 'q54_lugares_transporte', 'q54_lugares_medios'
     ], inplace=True)
 
     df_2023 = construir_multiseleccion(df_2023, {
@@ -1125,7 +1021,7 @@ def run_etl():
         'q63_discriminacion', 'q63_discriminacion_estado', 'q63_discriminacion_fuerzas',
         'q63_discriminacion_atencion_medica', 'q63_discriminacion_educacion', 'q63_discriminacion_calle',
         'q63_discriminacion_trabajo', 'q63_discriminacion_grupos_sociales', 'q63_discriminacion_transporte',
-        'q63_discriminacion_medios_comunicacion', 'q63_discriminacion_otros', 'q63_discriminacion_especificar'
+        'q63_discriminacion_medios_comunicacion', 'q63_discriminacion_otros'
     ], inplace=True)
 
     #VIOLENCIA POR FUERZAS DE SEGURIDAD (homologado a No / Sí, alguna vez / Sí)
@@ -1161,10 +1057,12 @@ def run_etl():
     # "Organización social" y "Organización barrial o comunitaria" son categorías separadas, pero
     # en 2023 se fusionan en una sola ("Organización social, barrial o comunitaria"); se unifican
     # también en 2020 bajo ese mismo nombre para poder comparar. "Movimiento social" es una
-    # categoría nueva de 2023, sin equivalente en 2020.
+    # categoría nueva de 2023, sin equivalente en 2020. La base pública 2020 retira
+    # q57_participacion_otra (texto libre): "Otra" queda sin dato en 2020, y quien solo marcó esa
+    # opción queda sin dato en participacion_organizacion.
     cols_participacion_2020 = [
         'q57_participacion_orgamigrantes', 'q57_participacion_orgasocial', 'q57_participacion_orgabarrial',
-        'q57_participacion_partido', 'q57_participacion_iglesia', 'q57_participacion_cooperativa', 'q57_participacion_otra'
+        'q57_participacion_partido', 'q57_participacion_iglesia', 'q57_participacion_cooperativa'
     ]
     df_2020['participacion_organizacion'] = pd.Series(np.nan, index=df_2020.index, dtype=object)
     df_2020.loc[df_2020[cols_participacion_2020].notna().any(axis=1), 'participacion_organizacion'] = 'Sí'
@@ -1175,13 +1073,13 @@ def run_etl():
         'participacion_tipo_partido': ['q57_participacion_partido'],
         'participacion_tipo_religiosa': ['q57_participacion_iglesia'],
         'participacion_tipo_cooperativa': ['q57_participacion_cooperativa'],
-        'participacion_tipo_otra': ['q57_participacion_otra'],
     })
+    df_2020['participacion_tipo_otra'] = np.nan
     df_2020['participacion_tipo_movimiento_social'] = np.nan
     df_2020.drop(columns=[
         'q57_participacion_no', 'q57_participacion_orgasocial', 'q57_participacion_orgabarrial',
         'q57_participacion_partido', 'q57_participacion_orgamigrantes', 'q57_participacion_iglesia',
-        'q57_participacion_cooperativa', 'q57_participacion_otra'
+        'q57_participacion_cooperativa'
     ], inplace=True)
 
     df_2023['participacion_organizacion'] = df_2023['q66_participacion_organizacion']
@@ -1197,8 +1095,7 @@ def run_etl():
     df_2023.drop(columns=[
         'q66_participacion_organizacion', 'q67_organizacion_', 'q67_organizacion_migrantes',
         'q67_organizacion_social', 'q67_organizacion_movimiento_social', 'q67_organizacion_partido',
-        'q67_organizacion_religiosa', 'q67_organizacion_cooperativa', 'q67_organizacion_otra',
-        'q67_organizacion_especificar'
+        'q67_organizacion_religiosa', 'q67_organizacion_cooperativa', 'q67_organizacion_otra'
     ], inplace=True)
 
     #VOTO EN ELECCIONES LOCALES (binarizado como 2023)
@@ -1304,19 +1201,19 @@ def run_etl():
         'q24_dificultades_no', 'q24_dificultades_otras',
         'q30_covid', 'q36_covidvivienda_renovacion', 'q36_covidvivienda_expulsion',
         'q36_covidvivienda_desalojo', 'q36_covidvivienda_aumento', 'q36_covidvivienda_amenaza',
-        'q36_covidvivienda_pago', 'q36_covidvivienda_nopbm', 'q36_covidvivienda_otro',
-        'q41_continuidad', 'q41_otro', 'q50_ife'
+        'q36_covidvivienda_pago', 'q36_covidvivienda_nopbm',
+        'q41_continuidad', 'q50_ife'
     ], inplace=True)
 
     #PESOS MUESTRALES
-    # Nota: mismo concepto (ponderador para estimaciones), distinto nombre entre años. Los valores
-    # vienen con coma como separador decimal en ambos años; se convierten a float con punto.
-    df_2020['peso_muestral_total'] = df_2020['pesos_para_estimaciones_totales'].astype(str).str.replace(',', '.').astype(float)
-    df_2020['peso_muestral_nacionalidad'] = df_2020['pesos_para_estimaciones_por_nacionalidad'].astype(str).str.replace(',', '.').astype(float)
+    # Nota: mismo concepto (ponderador para estimaciones), distinto nombre entre años. Las bases
+    # públicas ya los traen con punto decimal.
+    df_2020['peso_muestral_total'] = df_2020['pesos_para_estimaciones_totales']
+    df_2020['peso_muestral_nacionalidad'] = df_2020['pesos_para_estimaciones_por_nacionalidad']
     df_2020.drop(columns=['pesos_para_estimaciones_totales', 'pesos_para_estimaciones_por_nacionalidad'], inplace=True)
 
-    df_2023['peso_muestral_total'] = df_2023['weightvec'].astype(str).str.replace(',', '.').astype(float)
-    df_2023['peso_muestral_nacionalidad'] = df_2023['weightvec_0'].astype(str).str.replace(',', '.').astype(float)
+    df_2023['peso_muestral_total'] = df_2023['weightvec']
+    df_2023['peso_muestral_nacionalidad'] = df_2023['weightvec_0']
     df_2023.drop(columns=['weightvec', 'weightvec_0'], inplace=True)
 
     #COLUMNAS SIN PAR 
@@ -1328,9 +1225,9 @@ def run_etl():
         'q49_deudas_familiaresorig', 'q49_deudas_no', 'q5_idioma', 'q5_otro'
     ], inplace=True)
     df_2023.drop(columns=[
-        'anios_residencia', 'motivos_habitat', 'nacionalidad_agrup', 'niveled_agrup',
-        'q19_documento_detalle', 'q21_dificultad_dni_detalle', 'q21_dni_dificultad', 'q21_dni_dificultad_turnos.1',
-        'q4_otro', 'q5_descendencia', 'q5_descendencia_otro_descrip', 'q6_idioma', 'q6_otro', 'sec_completo_agrup'
+        'motivos_habitat', 'nacionalidad_agrup', 'niveled_agrup',
+        'q21_dni_dificultad', 'q21_dni_dificultad_turnos.1',
+        'q4_otro', 'q5_descendencia', 'q6_idioma', 'q6_otro', 'sec_completo_agrup'
     ], inplace=True)
 
     print("ETL completado con éxito.")
