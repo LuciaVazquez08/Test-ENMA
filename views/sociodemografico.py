@@ -163,12 +163,15 @@ def _descendencia_por_pais(df):
             # disponible para reactivarlo agregando de nuevo el <span> con %{customdata[0]}.
             hovertemplate="%{y}<br>Porcentaje: %{x:.0f}%",
         )
+        # Mismo criterio que el gráfico de género: leyenda horizontal arriba y sin título de eje X,
+        # para que las barras usen todo el ancho y no quede espacio en blanco antes de la nota.
         fig.update_layout(
-            yaxis_title=None, xaxis_title="Porcentaje (%)",
-            margin=dict(t=25, b=25, l=15, r=15),
+            yaxis_title=None, xaxis_title=None,
+            legend=dict(orientation="h", yanchor="bottom", y=1.0, xanchor="left", x=0, title_text=None),
+            margin=dict(t=10, b=10, l=10, r=30),
         )
         aplicar_tipografia(fig)
-        fig.update_xaxes(range=[0, data["Porcentaje"].max() * 1.2])
+        fig.update_xaxes(range=[0, data["Porcentaje"].max() * 1.2], ticksuffix="%")
         fig.update_yaxes(tickmode="array", tickvals=orden, ticktext=_ticktext_con_referencia(orden), tickfont=dict(size=9))
         st.plotly_chart(fig, width="stretch")
         _nota_ponderacion_por_pais(df, "descendencia")
