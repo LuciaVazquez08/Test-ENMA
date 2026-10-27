@@ -2,6 +2,7 @@ import streamlit as st
 
 from data_utils import (
     aplicar_filtros,
+    filtro_cruce,
     filtro_edicion,
     grafico_barras,
     grafico_multiseleccion,
@@ -25,6 +26,7 @@ def render():
     mask = filtro_edicion(df, "vivienda_edicion")
 
     df = aplicar_filtros(df, mask, contador)
+    filtro_cruce(df, "vivienda_cruce")
 
     st.title("Vivienda")
     st.caption("Tenencia de la vivienda y dificultades de acceso.")

@@ -3,7 +3,9 @@ import streamlit as st
 
 from data_utils import (
     PESO_NACIONALIDAD,
+    PERIODO_RESIDENCIA_ORDEN,
     PESO_TOTAL,
+    POBLACION_TOTAL_LABEL,
     TAMANIO_EJE_CATEGORIAS,
     TEXTO_PORCENTAJE_ENTERO,
     aplicar_filtros,
@@ -15,10 +17,6 @@ from data_utils import (
     nota_ponderacion,
 )
 from enma_palette import CHART_SEQUENCE, COLORS
-
-PERIODO_RESIDENCIA_ORDEN = ["Hasta 5 años", "Entre 5 y 9 años", "Más de 10 años"]
-
-POBLACION_TOTAL_LABEL = "Población migrante total"
 
 DESCENDENCIA_ORDEN = ["Afrodescendiente", "Descendencia Asiática", "Descendencia Indígena", "Ninguna de las anteriores"]
 DESCENDENCIA_SIN_GRAFICAR = ["Ninguna de las anteriores"]

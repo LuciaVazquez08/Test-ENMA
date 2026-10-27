@@ -2,6 +2,7 @@ import streamlit as st
 
 from data_utils import (
     aplicar_filtros,
+    filtro_cruce,
     filtro_edicion,
     grafico_barras,
     grafico_multiseleccion,
@@ -31,6 +32,7 @@ def render():
     mask = filtro_edicion(df, "educacion_edicion")
 
     df = aplicar_filtros(df, mask, contador)
+    filtro_cruce(df, "educacion_cruce")
 
     st.title("Trayectoria educativa (adultos/as)")
     st.caption("Nivel educativo alcanzado y situación educativa actual de la población encuestada.")

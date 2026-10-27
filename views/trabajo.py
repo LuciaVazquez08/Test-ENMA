@@ -2,6 +2,7 @@ import streamlit as st
 
 from data_utils import (
     aplicar_filtros,
+    filtro_cruce,
     filtro_edicion,
     grafico_barras,
     grafico_multiseleccion,
@@ -25,6 +26,7 @@ def render():
     mask = filtro_edicion(df, "trabajo_edicion")
 
     df = aplicar_filtros(df, mask, contador)
+    filtro_cruce(df, "trabajo_cruce")
 
     st.title("Situación socioeconómica")
     st.caption("Situación ocupacional, circuitos laborales y acceso a ayudas económicas.")
@@ -45,10 +47,12 @@ def render():
         "Qué % de quienes tuvieron dificultades declaró cada tipo (pregunta de selección múltiple: una persona puede haber tenido más de una).",
     )
 
-    col3, col4, col5 = st.columns(3)
+    col3, col4 = st.columns(2)
     with col3:
         grafico_barras(df, "envia_dinero_exterior", "Distribución por envío de dinero al exterior")
     with col4:
         grafico_barras(df, "recibe_ayuda_economica", "Distribución por recepción de ayuda económica o alimentaria")
+
+    col5, _ = st.columns(2)
     with col5:
         grafico_barras(df, "dificultad_gestion_subsidios", "Distribución por dificultad para gestionar subsidios o prestaciones")

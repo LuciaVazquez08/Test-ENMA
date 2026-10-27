@@ -1,7 +1,7 @@
 import pandas as pd
 import streamlit as st
 
-from data_utils import aplicar_filtros, filtro_edicion, grafico_barras, iniciar_filtros, load_data
+from data_utils import aplicar_filtros, filtro_cruce, filtro_edicion, grafico_barras, iniciar_filtros, load_data
 
 HOGAR_PERSONAS_ORDEN = ["1", "2", "3", "4", "5 o más"]
 
@@ -23,6 +23,7 @@ def render():
     mask = filtro_edicion(df, "familia_edicion")
 
     df = aplicar_filtros(df, mask, contador)
+    filtro_cruce(df, "familia_cruce")
 
     st.title("Situación familiar y hogar")
     st.caption("Composición del hogar, convivencia, discapacidad y presencia de hijos/as.")

@@ -27,6 +27,39 @@ TAMANIO_EJE_CATEGORIAS = 13
 TEXTO_PORCENTAJE_ENTERO = "<b>%{text:.0f}%</b>"
 
 
+# Dimensiones de cruce que se eligen en el panel lateral de las secciones (ver `filtro_cruce`).
+SIN_CRUCE = "Sin cruce"
+POBLACION_TOTAL_LABEL = "Población migrante total"
+TODO_EL_PAIS_LABEL = "Todo el país"
+PERIODO_RESIDENCIA_ORDEN = ["Hasta 5 años", "Entre 5 y 9 años", "Más de 10 años"]
+REGIONES_ORDEN = ["AMBA", "Región Pampeana", "Cuyo", "NEA", "NOA", "Patagonia", "Sin clasificar"]
+CRUCES = {
+    # País de origen: cada país con el ponderador intra nacionalidad y la fila de población total
+    # con el general, como en la página sociodemográfica.
+    "País de origen": dict(
+        columna="pais_nacimiento_var", nombre="país de origen", total=POBLACION_TOTAL_LABEL,
+        peso_filas=PESO_NACIONALIDAD,
+        nota="Países ponderados por nacionalidad; Población migrante total ponderada con el ponderador general",
+    ),
+    "Tiempo de residencia": dict(
+        columna="periodo_residencia", nombre="tiempo de residencia", total=None,
+        peso_filas=PESO_TOTAL, orden=PERIODO_RESIDENCIA_ORDEN,
+        nota="Datos ponderados con el ponderador general",
+    ),
+    "Región": dict(
+        columna="region", nombre="región de residencia", total=TODO_EL_PAIS_LABEL,
+        peso_filas=PESO_TOTAL, orden=REGIONES_ORDEN,
+        nota="Datos ponderados con el ponderador general",
+    ),
+}
+
+# Gráficos cruzados: etiquetas de las filas (categorías del cruce) en 10, % en negrita con 1
+# decimal, y detalle flotante sin el nombre de la categoría (ya está en la leyenda).
+TAMANIO_EJE_CRUCE = 10
+TEXTO_PORCENTAJE_DECIMAL = "<b>%{text:.1f}%</b>"
+NOTA_RESPUESTA_MULTIPLE = "**Respuesta múltiple: los % no suman 100.**"
+
+
 def formatear_n(n: int) -> str:
     return f"{n:,}".replace(",", ".")
 
@@ -70,6 +103,7 @@ def iniciar_filtros() -> "st.delta_generator.DeltaGenerator":
     También reinicia la rotación de colores de los gráficos (ver `_siguiente_color`), para que
     cada página vuelva a empezar por el primer color de la paleta en su primer gráfico."""
     st.session_state["_color_index"] = 0
+    st.session_state["_cruce"] = None
     st.sidebar.header("Filtros")
     return st.sidebar.empty()
 
@@ -144,6 +178,146 @@ def filtro_region(df: pd.DataFrame, key: str) -> pd.Series:
     return df["region"].isin(seleccion)
 
 
+def filtro_cruce(df: pd.DataFrame, key: str) -> dict | None:
+    """Selector de la dimensión de cruce de la sección. Recibe `df` ya filtrado por año, para fijar
+    el orden de las filas una sola vez (igual en todos los gráficos de la página). Guarda el cruce
+    elegido en session_state, de donde lo leen `grafico_barras` y `grafico_multiseleccion` (se
+    reinicia en `iniciar_filtros`, así las páginas sin este selector no cruzan)."""
+    eleccion = st.sidebar.selectbox("Cruzar por", [SIN_CRUCE, *CRUCES], key=key)
+    if eleccion == SIN_CRUCE:
+        st.session_state["_cruce"] = None
+        return None
+    cruce = dict(CRUCES[eleccion])
+    if "orden" in cruce:
+        filas = [c for c in cruce["orden"] if c in set(df[cruce["columna"]].dropna())]
+    else:
+        # Países de menor a mayor cantidad de casos, como en la página sociodemográfica.
+        filas = df.groupby(cruce["columna"])[PESO_NACIONALIDAD].sum().sort_values().index.tolist()
+    cruce["filas"] = ([cruce["total"]] if cruce["total"] else []) + filas
+    st.session_state["_cruce"] = cruce
+    return cruce
+
+
+def _titulo_cruzado(titulo: str, cruce: dict) -> str:
+    """"Distribución por X" -> "X según <dimensión>" (el resto de los títulos solo suma "según ...")."""
+    prefijo = "Distribución por "
+    if titulo.startswith(prefijo):
+        titulo = titulo[len(prefijo):]
+        titulo = titulo[0].upper() + titulo[1:]
+    return f"{titulo} según {cruce['nombre']}"
+
+
+def _ponderados_por_fila(df: pd.DataFrame, cruce: dict, valores) -> dict:
+    """Aplica `valores(sub_df, columna_peso)` a cada fila del cruce: la de total sobre todo `df`
+    con el ponderador general y cada categoría sobre su subconjunto con el ponderador de la
+    dimensión. Devuelve {fila: resultado}, sin las filas que quedan vacías."""
+    resultado = {}
+    for fila in cruce["filas"]:
+        if fila == cruce["total"]:
+            sub, peso = df, PESO_TOTAL
+        else:
+            sub, peso = df[df[cruce["columna"]] == fila], cruce["peso_filas"]
+        if not sub.empty and sub[peso].sum():
+            resultado[fila] = valores(sub, peso)
+    return resultado
+
+
+def _ejes_cruce(fig, filas: list, total: str | None):
+    """Filas del cruce en el eje Y, en el orden de `filas` de arriba hacia abajo (Plotly dibuja la
+    primera categoría abajo, por eso se invierte) y con la fila de total en negrita."""
+    fig.update_yaxes(
+        categoryorder="array", categoryarray=filas[::-1],
+        tickmode="array", tickvals=filas, ticktext=[f"<b>{f}</b>" if f == total else f for f in filas],
+        tickfont=dict(size=TAMANIO_EJE_CRUCE), title=None,
+    )
+
+
+def _grafico_cruce_simple(df, columna, titulo, orden, cruce):
+    """Pregunta de respuesta única cruzada: barras apiladas al 100% (una fila por categoría del
+    cruce), con el valor sin redondear en la barra (cada fila suma 100%) y la etiqueta con 1
+    decimal, como "Composición por género según país de origen"."""
+    with st.container(border=True, key=f"grafico_{columna}"):
+        st.subheader(_titulo_cruzado(titulo, cruce))
+        datos = df.dropna(subset=[columna, cruce["columna"]]) if not cruce["total"] else df.dropna(subset=[columna])
+        distribuciones = _ponderados_por_fila(
+            datos, cruce,
+            lambda sub, peso: sub.groupby(columna)[peso].sum().pipe(lambda c: c / c.sum() * 100),
+        )
+        if not distribuciones:
+            st.info("Sin datos para este filtro.")
+            return
+        tabla = pd.DataFrame(distribuciones).T.fillna(0)
+        if orden:
+            categorias = [c for c in orden if c in tabla.columns]
+        else:
+            categorias = datos.groupby(columna)[PESO_TOTAL].sum().sort_values(ascending=False).index.tolist()
+        filas = list(tabla.index)
+        data = tabla.reset_index(names="Fila").melt(id_vars="Fila", var_name="Categoría", value_name="Porcentaje")
+        colores = {c: CHART_SEQUENCE[i % len(CHART_SEQUENCE)] for i, c in enumerate(categorias)}
+        fig = px.bar(
+            data, x="Porcentaje", y="Fila", color="Categoría", orientation="h", barmode="stack",
+            category_orders={"Categoría": categorias}, color_discrete_map=colores, text="Porcentaje",
+        )
+        fig.update_traces(
+            texttemplate=TEXTO_PORCENTAJE_DECIMAL, textposition="inside", cliponaxis=False,
+            hovertemplate="%{y}<br>Porcentaje: %{x:.1f}%<extra></extra>",
+        )
+        fig.update_layout(
+            xaxis_title=None,
+            legend=dict(orientation="h", yanchor="bottom", y=1.0, xanchor="left", x=0, title_text=None),
+            margin=dict(t=10, b=10, l=10, r=30),
+        )
+        fig.update_xaxes(range=[0, 101], tickvals=[0, 25, 50, 75, 100], ticktext=["0%", "25%", "50%", "75%", "100%"])
+        aplicar_tipografia(fig)
+        _ejes_cruce(fig, filas, cruce["total"])
+        st.plotly_chart(fig, width="stretch")
+        nota_ponderacion(len(datos), cruce["nota"])
+
+
+def _grafico_cruce_multiple(df, opciones, titulo, subtitulo, cruce):
+    """Pregunta de respuesta múltiple cruzada: tabla de calor con una fila por opción y una columna
+    por categoría del cruce (la de total primera y en negrita). Cada celda es el % ponderado de
+    quienes respondieron la pregunta en esa categoría que marcó la opción; las opciones no son
+    excluyentes, así que los % de una columna no suman 100."""
+    columnas = [c for c, _ in opciones]
+    with st.container(border=True, key=f"grafico_{columnas[0]}"):
+        st.subheader(_titulo_cruzado(titulo, cruce))
+        st.caption(f"{NOTA_RESPUESTA_MULTIPLE} {subtitulo}")
+        respondieron = df[df[columnas].notna().any(axis=1)]
+        if not cruce["total"]:
+            respondieron = respondieron.dropna(subset=[cruce["columna"]])
+
+        def porcentajes(sub, peso):
+            return {
+                etiqueta: (_a_binario(sub[columna]) * sub[peso]).sum() / sub.loc[sub[columna].notna(), peso].sum() * 100
+                for columna, etiqueta in opciones if sub[columna].notna().any()
+            }
+
+        tabla = pd.DataFrame(_ponderados_por_fila(respondieron, cruce, porcentajes))
+        if tabla.empty:
+            st.info("Sin datos para este filtro.")
+            return
+        tabla = tabla.loc[[e for _, e in opciones if e in tabla.index]]
+        fig = px.imshow(
+            tabla, aspect="auto", zmin=0, zmax=100,
+            color_continuous_scale=[COLORS["background"], COLORS["orange_1"]],
+        )
+        fig.update_traces(
+            texttemplate="<b>%{z:.1f}%</b>", textfont=dict(size=TAMANIO_EJE_CRUCE),
+            hovertemplate="%{x}<br>%{y}: %{z:.1f}%<extra></extra>",
+        )
+        fig.update_layout(coloraxis_showscale=False, margin=dict(t=10, b=10, l=10, r=10))
+        aplicar_tipografia(fig)
+        fig.update_xaxes(
+            side="top", title=None, tickangle=-30, tickfont=dict(size=TAMANIO_EJE_CRUCE),
+            tickmode="array", tickvals=list(tabla.columns),
+            ticktext=[f"<b>{c}</b>" if c == cruce["total"] else c for c in tabla.columns],
+        )
+        fig.update_yaxes(title=None, tickfont=dict(size=TAMANIO_EJE_CRUCE))
+        st.plotly_chart(fig, width="stretch")
+        nota_ponderacion(len(respondieron), cruce["nota"])
+
+
 def aplicar_filtros(df: pd.DataFrame, mask: pd.Series, contador) -> pd.DataFrame:
     """Filtra df con la máscara combinada de la página, actualiza el contador de
     encuestados (en el placeholder reservado por iniciar_filtros) y frena la
@@ -188,6 +362,13 @@ def grafico_barras(
     horizontal: bool = False,
     columna_peso: str = PESO_TOTAL,
 ):
+    """Sin cruce: distribución de frecuencias en barras de un solo color, con % enteros. Con un
+    cruce elegido en el panel lateral (`filtro_cruce`): barras apiladas al 100% por categoría del
+    cruce (ver `_grafico_cruce_simple`)."""
+    cruce = st.session_state.get("_cruce")
+    if cruce:
+        _grafico_cruce_simple(df, columna, titulo, orden, cruce)
+        return
     with st.container(border=True, key=f"grafico_{columna}"):
         st.subheader(titulo)
         data = distribucion(df, columna, orden, columna_peso=columna_peso)
@@ -257,10 +438,14 @@ def grafico_multiseleccion(
     respondieron la pregunta (no sobre la muestra completa). A diferencia de `grafico_barras`, las
     opciones no son mutuamente excluyentes: una misma persona puede sumar en más de una barra si
     marcó varias, por eso el subtítulo aclara qué representa cada porcentaje."""
+    cruce = st.session_state.get("_cruce")
+    if cruce:
+        _grafico_cruce_multiple(df, opciones, titulo, subtitulo, cruce)
+        return
     columna_base = opciones[0][0]
     with st.container(border=True, key=f"grafico_{columna_base}"):
         st.subheader(titulo)
-        st.caption(subtitulo)
+        st.caption(f"{NOTA_RESPUESTA_MULTIPLE} {subtitulo}")
         filas = []
         for columna, etiqueta in opciones:
             datos = df.dropna(subset=[columna])

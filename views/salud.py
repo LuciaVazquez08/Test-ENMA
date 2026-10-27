@@ -2,6 +2,7 @@ import streamlit as st
 
 from data_utils import (
     aplicar_filtros,
+    filtro_cruce,
     filtro_edicion,
     grafico_barras,
     grafico_multiseleccion,
@@ -35,15 +36,18 @@ def render():
     mask = filtro_edicion(df, "salud_edicion")
 
     df = aplicar_filtros(df, mask, contador)
+    filtro_cruce(df, "salud_cruce")
 
     st.title("Derecho a la salud")
     st.caption("Cobertura, acceso y dificultades relacionadas con la atención de la salud.")
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     with col1:
         grafico_barras(df, "salud_cobertura", "Distribución por cobertura de salud")
     with col2:
         grafico_barras(df, "salud_problemas", "Distribución por problemas de salud")
+
+    col3, _ = st.columns(2)
     with col3:
         grafico_barras(df, "salud_dificultad_acceso", "Distribución por frecuencia de dificultades para acceder a la salud")
 
