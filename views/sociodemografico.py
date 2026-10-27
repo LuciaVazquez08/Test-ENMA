@@ -4,6 +4,8 @@ import streamlit as st
 from data_utils import (
     PESO_NACIONALIDAD,
     PESO_TOTAL,
+    TAMANIO_EJE_CATEGORIAS,
+    TEXTO_PORCENTAJE_ENTERO,
     aplicar_filtros,
     aplicar_tipografia,
     formatear_n,
@@ -164,7 +166,11 @@ def _descendencia_por_pais(df):
             margin=dict(t=10, b=10, l=10, r=30),
         )
         aplicar_tipografia(fig)
-        fig.update_xaxes(range=[0, data["Porcentaje"].max() * 1.2], ticksuffix="%")
+        # Escala fija de 0 a 75% con marcas cada 25%: el valor más alto es 73,3% (Haití, 2020) y una
+        # escala fija permite comparar entre ediciones. cliponaxis=False deja ver las etiquetas
+        # que quedan pasando el 75%.
+        fig.update_xaxes(range=[0, 75], tickvals=[0, 25, 50, 75], ticktext=["0%", "25%", "50%", "75%"])
+        fig.update_traces(cliponaxis=False)
         # En barras horizontales Plotly dibuja la primera categoría abajo: se invierte `orden` para
         # que Población migrante total quede siempre en la primera fila, arriba de todo.
         fig.update_yaxes(
@@ -191,7 +197,7 @@ def _region_por_edad(df):
             text="Porcentaje", custom_data=["Cantidad"],
         )
         fig.update_traces(
-            texttemplate="%{text:.0f}%", textposition="outside",
+            texttemplate=TEXTO_PORCENTAJE_ENTERO, textposition="outside",
             # Detalle de personas (ponderado) deshabilitado a pedido; customdata queda
             # disponible para reactivarlo agregando de nuevo el <span> con %{customdata[0]}.
             hovertemplate="%{x}<br>Porcentaje: %{y:.0f}%",
@@ -201,6 +207,7 @@ def _region_por_edad(df):
             legend_title="Rango etario", margin=dict(t=25, b=25, l=15, r=15),
         )
         aplicar_tipografia(fig)
+        fig.update_xaxes(tickfont=dict(size=TAMANIO_EJE_CATEGORIAS))
         st.plotly_chart(fig, width="stretch")
         nota_ponderacion(int(df[["edad_agrupada", "region"]].notna().all(axis=1).sum()))
 

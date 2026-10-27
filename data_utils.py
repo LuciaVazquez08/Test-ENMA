@@ -21,6 +21,12 @@ PESO_TOTAL = "peso_muestral_total"
 PESO_NACIONALIDAD = "peso_muestral_nacionalidad"
 
 
+# Etiquetas de las categorías del eje un punto más grandes que el tamaño por defecto de Plotly (12),
+# y % de las barras en negrita, en todos los gráficos de barras.
+TAMANIO_EJE_CATEGORIAS = 13
+TEXTO_PORCENTAJE_ENTERO = "<b>%{text:.0f}%</b>"
+
+
 def formatear_n(n: int) -> str:
     return f"{n:,}".replace(",", ".")
 
@@ -198,6 +204,7 @@ def grafico_barras(
             )
             fig.update_layout(yaxis_title=None, xaxis_title="Porcentaje (%)")
             fig.update_xaxes(range=[0, data["Porcentaje"].max() * 1.18])
+            fig.update_yaxes(tickfont=dict(size=TAMANIO_EJE_CATEGORIAS))
             hovertemplate = (
                 "%{y}<br>Porcentaje: %{x:.0f}%"
                 # Detalle de personas (ponderado) deshabilitado a pedido; customdata queda
@@ -212,13 +219,14 @@ def grafico_barras(
             )
             fig.update_layout(xaxis_title=None, yaxis_title="Porcentaje (%)")
             fig.update_yaxes(range=[0, data["Porcentaje"].max() * 1.3])
+            fig.update_xaxes(tickfont=dict(size=TAMANIO_EJE_CATEGORIAS))
             hovertemplate = (
                 "%{x}<br>Porcentaje: %{y:.0f}%"
                 # Detalle de personas (ponderado) deshabilitado a pedido; customdata queda
                 # disponible para reactivarlo agregando de nuevo el <span> con %{customdata[0]}.
                 "<extra></extra>"
             )
-        fig.update_traces(texttemplate="%{text:.0f}%", textposition="outside", hovertemplate=hovertemplate)
+        fig.update_traces(texttemplate=TEXTO_PORCENTAJE_ENTERO, textposition="outside", hovertemplate=hovertemplate)
         fig.update_layout(margin=dict(t=25, b=25, l=15, r=15))
         aplicar_tipografia(fig)
         st.plotly_chart(fig, width="stretch")
@@ -280,13 +288,14 @@ def grafico_multiseleccion(
         )
         fig.update_layout(yaxis_title=None, xaxis_title="Porcentaje (%)")
         fig.update_xaxes(range=[0, data["Porcentaje"].max() * 1.18])
+        fig.update_yaxes(tickfont=dict(size=TAMANIO_EJE_CATEGORIAS))
         hovertemplate = (
             "%{y}<br>Porcentaje: %{x:.0f}%"
             # Detalle de personas (ponderado) deshabilitado a pedido; customdata queda
             # disponible para reactivarlo agregando de nuevo el <span> con %{customdata[0]}.
             "<extra></extra>"
         )
-        fig.update_traces(texttemplate="%{text:.0f}%", textposition="outside", hovertemplate=hovertemplate)
+        fig.update_traces(texttemplate=TEXTO_PORCENTAJE_ENTERO, textposition="outside", hovertemplate=hovertemplate)
         fig.update_layout(margin=dict(t=25, b=25, l=15, r=15))
         aplicar_tipografia(fig)
         st.plotly_chart(fig, width="stretch")
