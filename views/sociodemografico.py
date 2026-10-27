@@ -27,23 +27,32 @@ GENERO_ETIQUETAS = {
     "Prefiero no responder": "Prefiero no contestar",
 }
 GENERO_ORDEN = list(GENERO_ETIQUETAS.values())
-# Población migrante total: colores principales de la paleta. Países: la variante más clara de cada
-# uno dentro de la misma paleta, para que la fila de población resalte sin cambiar la estética.
-GENERO_COLORES_POBLACION = dict(zip(GENERO_ORDEN, [COLORS["orange_1"], COLORS["blue"], COLORS["yellow_2"], COLORS["blue_accent"]]))
-GENERO_COLORES = dict(zip(GENERO_ORDEN, [COLORS["yellow_2"], COLORS["blue_accent"], COLORS["yellow_1"], COLORS["blue_pale"]]))
+# En los gráficos según país de origen, la fila Población migrante total usa los colores
+# principales de la paleta y los países la variante más clara de cada uno dentro de la misma
+# paleta, para que la fila de población resalte sin cambiar la estética.
+COLORES_PRINCIPALES = [COLORS["orange_1"], COLORS["blue"], COLORS["yellow_2"], COLORS["blue_accent"]]
+VARIANTE_CLARA = {
+    COLORS["orange_1"]: COLORS["yellow_2"],
+    COLORS["blue"]: COLORS["blue_accent"],
+    COLORS["yellow_2"]: COLORS["yellow_1"],
+    COLORS["blue_accent"]: COLORS["blue_pale"],
+}
 
 
-def _oscurecer(color_hex, factor=0.35):
-    """Mismo tono, más oscuro: mezcla el color con negro en la proporción `factor` (0.35 equivale
-    a unos 2-3 tonos más oscuros)."""
-    r, g, b = (int(color_hex[i:i + 2], 16) for i in (1, 3, 5))
-    return "#{:02X}{:02X}{:02X}".format(*(round(c * (1 - factor)) for c in (r, g, b)))
+def _colores_por_categoria(categorias):
+    """Colores de cada categoría para la fila de población (principales) y para los países (la
+    variante clara de cada uno)."""
+    poblacion = dict(zip(categorias, COLORES_PRINCIPALES))
+    paises = {categoria: VARIANTE_CLARA[color] for categoria, color in poblacion.items()}
+    return poblacion, paises
 
 
-def _poblacion_destacada(fig, data, columna_color, colores, agrupado=False, colores_poblacion=None):
-    """Redibuja la fila de Población migrante total con los mismos colores pero más oscuros (o con
-    `colores_poblacion`, si se pasan), para que se distinga de las nacionalidades sin cambiar la
-    estética del gráfico. Va en trazas aparte,
+GENERO_COLORES_POBLACION, GENERO_COLORES = _colores_por_categoria(GENERO_ORDEN)
+
+
+def _poblacion_destacada(fig, data, columna_color, colores_poblacion, agrupado=False):
+    """Redibuja la fila de Población migrante total con `colores_poblacion` (los colores principales
+    de la paleta), para que se distinga de las nacionalidades. Va en trazas aparte,
     sin entrada de leyenda (así la leyenda muestra el color de las nacionalidades). En barras
     agrupadas (`agrupado=True`) cada traza va en el mismo grupo que su categoría (`offsetgroup`)
     para respetar su posición; en barras apiladas no hace falta y rompería el apilado.
@@ -51,14 +60,13 @@ def _poblacion_destacada(fig, data, columna_color, colores, agrupado=False, colo
     poblacion = data[data["pais_nacimiento_var"] == POBLACION_TOTAL_LABEL]
     for trace in fig.data:
         trace.legendgroup = trace.name
-    for categoria, color in colores.items():
+    for categoria, color in colores_poblacion.items():
         fila = poblacion[poblacion[columna_color] == categoria]
         if fila.empty:
             continue
         fig.add_bar(
             x=fila["Porcentaje"], y=fila["pais_nacimiento_var"], orientation="h",
-            marker_color=colores_poblacion[categoria] if colores_poblacion else _oscurecer(color),
-            name=categoria, legendgroup=categoria,
+            marker_color=color, name=categoria, legendgroup=categoria,
             offsetgroup=categoria if agrupado else None, showlegend=False, text=fila["Porcentaje"],
         )
 
@@ -121,7 +129,7 @@ def _pais_por_genero(df):
             color_discrete_map=GENERO_COLORES,
             text="Porcentaje", custom_data=["Cantidad"],
         )
-        _poblacion_destacada(fig, data, "Género", GENERO_COLORES, colores_poblacion=GENERO_COLORES_POBLACION)
+        _poblacion_destacada(fig, data, "Género", GENERO_COLORES_POBLACION)
         fig.update_traces(
             # Barra con el valor sin redondear (cada fila suma 100%); etiqueta con 1 decimal.
             texttemplate="%{text:.1f}%", textposition="inside",
@@ -154,7 +162,7 @@ def _descendencia_por_pais(df):
         data = tabla.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Descendencia", value_name="Porcentaje")
         data_cantidad = conteo.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Descendencia", value_name="Cantidad")
         data = data.merge(data_cantidad, on=["pais_nacimiento_var", "Descendencia"])
-        colores = dict(zip(tabla.columns, CHART_SEQUENCE))
+        colores_poblacion, colores = _colores_por_categoria(list(tabla.columns))
         fig = px.bar(
             data[data["pais_nacimiento_var"] != POBLACION_TOTAL_LABEL],
             x="Porcentaje", y="pais_nacimiento_var", color="Descendencia",
@@ -163,12 +171,12 @@ def _descendencia_por_pais(df):
             color_discrete_map=colores,
             text="Porcentaje", custom_data=["Cantidad"],
         )
-        _poblacion_destacada(fig, data, "Descendencia", colores, agrupado=True)
+        _poblacion_destacada(fig, data, "Descendencia", colores_poblacion, agrupado=True)
         fig.update_traces(
-            texttemplate="%{text:.0f}%", textposition="outside",
+            texttemplate="%{text:.1f}%", textposition="outside",
             # Detalle de personas (ponderado) deshabilitado a pedido; customdata queda
             # disponible para reactivarlo agregando de nuevo el <span> con %{customdata[0]}.
-            hovertemplate="%{y}<br>Porcentaje: %{x:.0f}%",
+            hovertemplate="%{y}<br>Porcentaje: %{x:.1f}%",
         )
         # Mismo criterio que el gráfico de género: leyenda horizontal arriba y sin título de eje X,
         # para que las barras usen todo el ancho y no quede espacio en blanco antes de la nota.
