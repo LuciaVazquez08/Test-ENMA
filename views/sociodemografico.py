@@ -19,6 +19,8 @@ PERIODO_RESIDENCIA_ORDEN = ["Hasta 5 años", "Entre 5 y 9 años", "Más de 10 a�
 
 POBLACION_TOTAL_LABEL = "Población migrante total"
 
+DESCENDENCIA_SIN_GRAFICAR = ["Ninguna de las anteriores"]
+
 # Orden fijo de las categorías de género (leyenda y apilado) y su etiqueta en los gráficos.
 GENERO_ETIQUETAS = {
     "Mujer": "Mujer",
@@ -147,17 +149,27 @@ def _pais_por_genero(df):
         )
         fig.update_xaxes(range=[0, 101], tickvals=[0, 25, 50, 75, 100], ticktext=["0%", "25%", "50%", "75%", "100%"])
         aplicar_tipografia(fig)
-        fig.update_yaxes(tickmode="array", tickvals=orden, ticktext=_ticktext_con_referencia(orden), tickfont=dict(size=9))
+        # En barras horizontales Plotly dibuja la primera categoría abajo: se invierte `orden` para
+        # que Población migrante total quede siempre en la primera fila, arriba de todo.
+        fig.update_yaxes(
+            categoryorder="array", categoryarray=orden[::-1],
+            tickmode="array", tickvals=orden, ticktext=_ticktext_con_referencia(orden), tickfont=dict(size=9),
+        )
         st.plotly_chart(fig, width="stretch")
         _nota_ponderacion_por_pais(df, "genero_agrup")
 
 
 def _descendencia_por_pais(df):
     with st.container(border=True, key="grafico_descendencia"):
-        st.subheader("Descendencia según país de origen")
+        st.subheader("Pertenencia afrodescendiente y otras según país de origen")
         tabla, conteo, orden = _tabla_ponderada(
             df, "pais_nacimiento_var", "descendencia", POBLACION_TOTAL_LABEL,
         )
+        # "Ninguna de las anteriores" se calcula (cuenta en el total de cada fila, así los % siguen
+        # siendo sobre todas las personas del país) pero no se grafica: es la categoría mayoritaria
+        # y aplastaba la escala del resto.
+        tabla = tabla.drop(columns=DESCENDENCIA_SIN_GRAFICAR, errors="ignore")
+        conteo = conteo.drop(columns=DESCENDENCIA_SIN_GRAFICAR, errors="ignore")
         data = tabla.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Descendencia", value_name="Porcentaje")
         data_cantidad = conteo.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Descendencia", value_name="Cantidad")
         data = data.merge(data_cantidad, on=["pais_nacimiento_var", "Descendencia"])
@@ -186,7 +198,12 @@ def _descendencia_por_pais(df):
         )
         aplicar_tipografia(fig)
         fig.update_xaxes(range=[0, data["Porcentaje"].max() * 1.2], ticksuffix="%")
-        fig.update_yaxes(tickmode="array", tickvals=orden, ticktext=_ticktext_con_referencia(orden), tickfont=dict(size=9))
+        # En barras horizontales Plotly dibuja la primera categoría abajo: se invierte `orden` para
+        # que Población migrante total quede siempre en la primera fila, arriba de todo.
+        fig.update_yaxes(
+            categoryorder="array", categoryarray=orden[::-1],
+            tickmode="array", tickvals=orden, ticktext=_ticktext_con_referencia(orden), tickfont=dict(size=9),
+        )
         st.plotly_chart(fig, width="stretch")
         _nota_ponderacion_por_pais(df, "descendencia")
 
