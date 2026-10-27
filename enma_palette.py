@@ -77,6 +77,20 @@ def inject_fonts() -> None:
             padding-top: 1rem;
             padding-bottom: 1rem;
         }}
+        /* Menú de páginas: los nombres largos siguen en el renglón de abajo en lugar de cortarse
+           con "…" cuando el panel lateral es angosto. */
+        [data-testid="stSidebarNavLink"] {{
+            height: auto !important;
+            min-height: 2rem;
+        }}
+        [data-testid="stSidebarNavLink"] span,
+        [data-testid="stSidebarNavLink"] [data-testid="stMarkdownContainer"],
+        [data-testid="stSidebarNavLink"] p {{
+            white-space: normal !important;
+            overflow: visible !important;
+            text-overflow: clip !important;
+            height: auto !important;
+        }}
         [class*="st-key-grafico_"], [class*="st-key-seccion_"] {{
             border: 2px solid #000000 !important;
             border-radius: 12px !important;

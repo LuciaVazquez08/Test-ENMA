@@ -24,18 +24,18 @@ st.set_page_config(
 inject_fonts()
 
 paginas = [
-    st.Page(inicio.render, title="Inicio", icon="🌎", url_path="inicio", default=True),
-    st.Page(sociodemografico.render, title="Datos sociodemográficos", icon="🧑‍🤝‍🧑", url_path="datos-sociodemograficos"),
-    st.Page(trayectoria_migratoria.render, title="Trayectoria y proyecto migratorio", icon="🧭", url_path="trayectoria-y-proyecto-migratorio"),
-    st.Page(documentacion.render, title="Situación documentaria", icon="🪪", url_path="situacion-documentaria"),
-    st.Page(familia_hogar.render, title="Situación familiar y hogar", icon="👪", url_path="situacion-familiar-y-hogar"),
-    st.Page(hijos_educacion.render, title="Hijos/as y educación", icon="🧒", url_path="hijos-y-educacion"),
-    st.Page(salud.render, title="Derecho a la salud", icon="🏥", url_path="derecho-a-la-salud"),
-    st.Page(vivienda.render, title="Vivienda", icon="🏠", url_path="vivienda"),
-    st.Page(educacion.render, title="Trayectoria educativa", icon="🎓", url_path="trayectoria-educativa-adultos"),
-    st.Page(trabajo.render, title="Situación socioeconómica", icon="💼", url_path="situacion-socioeconomica"),
-    st.Page(discriminacion_violencia.render, title="Discriminación y violencia", icon="⚠️", url_path="discriminacion-y-violencia"),
-    st.Page(participacion.render, title="Participación social y política", icon="🗳️", url_path="participacion-social-y-politica"),
+    st.Page(inicio.render, title="Inicio", url_path="inicio", default=True),
+    st.Page(sociodemografico.render, title="Datos sociodemográficos", url_path="datos-sociodemograficos"),
+    st.Page(trayectoria_migratoria.render, title="Trayectoria y proyecto migratorio", url_path="trayectoria-y-proyecto-migratorio"),
+    st.Page(documentacion.render, title="Situación documentaria", url_path="situacion-documentaria"),
+    st.Page(familia_hogar.render, title="Situación familiar y hogar", url_path="situacion-familiar-y-hogar"),
+    st.Page(hijos_educacion.render, title="Hijos/as y educación", url_path="hijos-y-educacion"),
+    st.Page(salud.render, title="Derecho a la salud", url_path="derecho-a-la-salud"),
+    st.Page(vivienda.render, title="Vivienda", url_path="vivienda"),
+    st.Page(educacion.render, title="Trayectoria educativa", url_path="trayectoria-educativa-adultos"),
+    st.Page(trabajo.render, title="Situación socioeconómica", url_path="situacion-socioeconomica"),
+    st.Page(discriminacion_violencia.render, title="Discriminación y violencia", url_path="discriminacion-y-violencia"),
+    st.Page(participacion.render, title="Participación social y política", url_path="participacion-social-y-politica"),
 ]
 
 navegacion = st.navigation(paginas)
