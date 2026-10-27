@@ -6,6 +6,7 @@ from data_utils import (
     PESO_TOTAL,
     aplicar_filtros,
     aplicar_tipografia,
+    formatear_n,
     filtro_edicion,
     filtro_nacionalidad,
     filtro_region,
@@ -153,8 +154,64 @@ def _region_por_edad(df):
         nota_ponderacion(int(df[["edad_agrupada", "region"]].notna().all(axis=1).sum()))
 
 
+# Categorías residuales que van al final de las tablas de composición, sin importar su peso.
+CATEGORIAS_AL_FINAL = ["Otro", "Sin clasificar"]
+
+
+def _formatear_porcentaje(valor):
+    """Porcentaje entero; "<1%" para categorías presentes que redondean a 0 y "—" si no figuran."""
+    if valor <= 0:
+        return "—"
+    return "<1%" if valor < 0.5 else f"{valor:.0f}%"
+
+
+def _tabla_por_edicion(df, columna, etiqueta):
+    """% ponderado (ponderador general de cada edición) de cada categoría de `columna`, con una
+    columna por edición. Una categoría que no se muestra por separado en una edición (p. ej. un
+    país que ese año queda dentro de "Otro") figura con "—"."""
+    tabla = (
+        df.dropna(subset=[columna])
+        .groupby(["Año", columna])[PESO_TOTAL].sum()
+        .unstack("Año", fill_value=0)
+    )
+    tabla = tabla.div(tabla.sum()).mul(100)
+    principales = [c for c in tabla.mean(axis=1).sort_values(ascending=False).index if c not in CATEGORIAS_AL_FINAL]
+    tabla = tabla.loc[principales + [c for c in CATEGORIAS_AL_FINAL if c in tabla.index]]
+    tabla = tabla.apply(lambda col: col.map(_formatear_porcentaje))
+    tabla.columns = [f"ENMA {anio}" for anio in tabla.columns]
+    tabla.index.name = etiqueta
+    return tabla.reset_index()
+
+
+def _mostrar_tabla(tabla):
+    """st.dataframe con la altura justa para mostrar todas las filas sin scroll interno."""
+    st.dataframe(tabla, hide_index=True, width="stretch", height=(len(tabla) + 1) * 35 + 3)
+
+
+def _composicion_ediciones(df):
+    """Composición de cada muestra por país de origen y por región, una columna por edición. Usa
+    la base completa: no la afectan los filtros de la página (año, nacionalidad ni región)."""
+    with st.container(border=True, key="grafico_composicion_ediciones"):
+        st.subheader("Composición de cada edición")
+        col_pais, col_region = st.columns(2)
+        with col_pais:
+            st.markdown("**País de origen según edición**")
+            _mostrar_tabla(_tabla_por_edicion(df, "pais_nacimiento_var", "País de origen"))
+        with col_region:
+            st.markdown("**Región de residencia según edición**")
+            _mostrar_tabla(_tabla_por_edicion(df, "region", "Región de residencia"))
+        n_por_anio = df["Año"].value_counts().sort_index()
+        n_texto = " y ".join(f"{formatear_n(int(n))} ({anio})" for anio, n in n_por_anio.items())
+        st.caption(
+            "Describe la composición de cada muestra; las ediciones no son comparables pregunta por "
+            "pregunta. \"—\": el país no se muestra por separado en esa edición y queda dentro de \"Otro\". "
+            f"Datos ponderados con el ponderador general de cada edición. N = {n_texto}"
+        )
+
+
 def render():
     df = load_data()
+    df_completo = df
     contador = iniciar_filtros()
 
     mask = filtro_edicion(df, "socio_edicion", reset_keys=["socio_nacionalidad"])
@@ -165,6 +222,8 @@ def render():
 
     st.title("Datos sociodemográficos")
     st.caption("Composición de la población migrante encuestada según origen, género, descendencia, idioma, edad, región y tiempo de residencia.")
+
+    _composicion_ediciones(df_completo)
 
     col1, col2 = st.columns(2)
     with col1:
