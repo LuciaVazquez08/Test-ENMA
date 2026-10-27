@@ -37,6 +37,27 @@ def _oscurecer(color_hex, factor=0.35):
     return "#{:02X}{:02X}{:02X}".format(*(round(c * (1 - factor)) for c in (r, g, b)))
 
 
+def _poblacion_en_tono_oscuro(fig, data, columna_color, colores, agrupado=False):
+    """Redibuja la fila de Población migrante total con los mismos colores pero más oscuros, para
+    que se distinga de las nacionalidades sin cambiar la estética del gráfico. Va en trazas aparte,
+    sin entrada de leyenda (así la leyenda muestra el color de las nacionalidades). En barras
+    agrupadas (`agrupado=True`) cada traza va en el mismo grupo que su categoría (`offsetgroup`)
+    para respetar su posición; en barras apiladas no hace falta y rompería el apilado.
+    `fig` debe haberse armado sin la fila de población."""
+    poblacion = data[data["pais_nacimiento_var"] == POBLACION_TOTAL_LABEL]
+    for trace in fig.data:
+        trace.legendgroup = trace.name
+    for categoria, color in colores.items():
+        fila = poblacion[poblacion[columna_color] == categoria]
+        if fila.empty:
+            continue
+        fig.add_bar(
+            x=fila["Porcentaje"], y=fila["pais_nacimiento_var"], orientation="h",
+            marker_color=_oscurecer(color), name=categoria, legendgroup=categoria,
+            offsetgroup=categoria if agrupado else None, showlegend=False, text=fila["Porcentaje"],
+        )
+
+
 def _nota_ponderacion_por_pais(df, columns_col):
     """Nota al pie de los cruces por país, con el N de casos con dato en el cruce."""
     n = int(df[["pais_nacimiento_var", columns_col]].notna().all(axis=1).sum())
@@ -93,22 +114,7 @@ def _pais_por_genero(df):
             color_discrete_map=GENERO_COLORES,
             text="Porcentaje", custom_data=["Cantidad"],
         )
-        # La fila de Población migrante total va con los mismos colores pero más oscuros, para que
-        # se distinga de las nacionalidades sin cambiar la estética del gráfico. Va en trazas
-        # aparte, sin entrada de leyenda, para que la leyenda muestre el color de las nacionalidades.
-        poblacion = data[data["pais_nacimiento_var"] == POBLACION_TOTAL_LABEL]
-        for genero in GENERO_ORDEN:
-            fila = poblacion[poblacion["Género"] == genero]
-            if fila.empty:
-                continue
-            fig.add_bar(
-                x=fila["Porcentaje"], y=fila["pais_nacimiento_var"], orientation="h",
-                marker_color=_oscurecer(GENERO_COLORES[genero]), name=genero,
-                legendgroup=genero, showlegend=False, text=fila["Porcentaje"],
-            )
-        for trace in fig.data:
-            if trace.showlegend is not False:
-                trace.legendgroup = trace.name
+        _poblacion_en_tono_oscuro(fig, data, "Género", GENERO_COLORES)
         fig.update_traces(
             texttemplate="%{text:.0f}%", textposition="inside",
             # Detalle de personas (ponderado) deshabilitado a pedido; customdata queda
@@ -134,13 +140,16 @@ def _descendencia_por_pais(df):
         data = tabla.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Descendencia", value_name="Porcentaje")
         data_cantidad = conteo.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Descendencia", value_name="Cantidad")
         data = data.merge(data_cantidad, on=["pais_nacimiento_var", "Descendencia"])
+        colores = dict(zip(tabla.columns, CHART_SEQUENCE))
         fig = px.bar(
-            data, x="Porcentaje", y="pais_nacimiento_var", color="Descendencia",
+            data[data["pais_nacimiento_var"] != POBLACION_TOTAL_LABEL],
+            x="Porcentaje", y="pais_nacimiento_var", color="Descendencia",
             orientation="h", barmode="group",
-            category_orders={"pais_nacimiento_var": orden},
-            color_discrete_sequence=CHART_SEQUENCE,
+            category_orders={"pais_nacimiento_var": orden, "Descendencia": list(colores)},
+            color_discrete_map=colores,
             text="Porcentaje", custom_data=["Cantidad"],
         )
+        _poblacion_en_tono_oscuro(fig, data, "Descendencia", colores, agrupado=True)
         fig.update_traces(
             texttemplate="%{text:.0f}%", textposition="outside",
             # Detalle de personas (ponderado) deshabilitado a pedido; customdata queda
