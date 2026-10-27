@@ -87,6 +87,13 @@ def inject_fonts() -> None:
             min-height: 260px;
             max-height: 520px;
         }}
+        /* Streamlit reserva en estos contenedores el alto original de la figura (450px), aunque la
+           regla de arriba achique el gráfico: sin esto queda un hueco en blanco debajo del eje X. */
+        [data-testid="stElementContainer"]:has([data-testid="stPlotlyChart"]),
+        [data-testid="stFullScreenFrame"]:has(> [data-testid="stPlotlyChart"]) {{
+            height: auto !important;
+            flex: 0 0 auto !important;
+        }}
         </style>
         """,
         unsafe_allow_html=True,

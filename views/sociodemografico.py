@@ -27,7 +27,10 @@ GENERO_ETIQUETAS = {
     "Prefiero no responder": "Prefiero no contestar",
 }
 GENERO_ORDEN = list(GENERO_ETIQUETAS.values())
-GENERO_COLORES = dict(zip(GENERO_ORDEN, [COLORS["orange_1"], COLORS["blue"], COLORS["yellow_2"], COLORS["blue_accent"]]))
+# Población migrante total: colores principales de la paleta. Países: la variante más clara de cada
+# uno dentro de la misma paleta, para que la fila de población resalte sin cambiar la estética.
+GENERO_COLORES_POBLACION = dict(zip(GENERO_ORDEN, [COLORS["orange_1"], COLORS["blue"], COLORS["yellow_2"], COLORS["blue_accent"]]))
+GENERO_COLORES = dict(zip(GENERO_ORDEN, [COLORS["yellow_2"], COLORS["blue_accent"], COLORS["yellow_1"], COLORS["blue_pale"]]))
 
 
 def _oscurecer(color_hex, factor=0.35):
@@ -37,9 +40,10 @@ def _oscurecer(color_hex, factor=0.35):
     return "#{:02X}{:02X}{:02X}".format(*(round(c * (1 - factor)) for c in (r, g, b)))
 
 
-def _poblacion_en_tono_oscuro(fig, data, columna_color, colores, agrupado=False):
-    """Redibuja la fila de Población migrante total con los mismos colores pero más oscuros, para
-    que se distinga de las nacionalidades sin cambiar la estética del gráfico. Va en trazas aparte,
+def _poblacion_destacada(fig, data, columna_color, colores, agrupado=False, colores_poblacion=None):
+    """Redibuja la fila de Población migrante total con los mismos colores pero más oscuros (o con
+    `colores_poblacion`, si se pasan), para que se distinga de las nacionalidades sin cambiar la
+    estética del gráfico. Va en trazas aparte,
     sin entrada de leyenda (así la leyenda muestra el color de las nacionalidades). En barras
     agrupadas (`agrupado=True`) cada traza va en el mismo grupo que su categoría (`offsetgroup`)
     para respetar su posición; en barras apiladas no hace falta y rompería el apilado.
@@ -53,7 +57,8 @@ def _poblacion_en_tono_oscuro(fig, data, columna_color, colores, agrupado=False)
             continue
         fig.add_bar(
             x=fila["Porcentaje"], y=fila["pais_nacimiento_var"], orientation="h",
-            marker_color=_oscurecer(color), name=categoria, legendgroup=categoria,
+            marker_color=colores_poblacion[categoria] if colores_poblacion else _oscurecer(color),
+            name=categoria, legendgroup=categoria,
             offsetgroup=categoria if agrupado else None, showlegend=False, text=fila["Porcentaje"],
         )
 
@@ -88,7 +93,9 @@ def _tabla_ponderada(df, index_col, columns_col, etiqueta_poblacion):
     orden_final = [etiqueta_poblacion] + orden
     pivot = pivot.loc[orden_final]
 
-    tabla = pivot.div(pivot.sum(axis=1), axis=0).mul(100).round(0)
+    # Sin redondear: así las barras apiladas de cada fila suman exactamente 100% y quedan en la
+    # misma escala; el redondeo a enteros se aplica solo en las etiquetas (texttemplate).
+    tabla = pivot.div(pivot.sum(axis=1), axis=0).mul(100)
     return tabla, pivot, orden_final
 
 
@@ -114,20 +121,20 @@ def _pais_por_genero(df):
             color_discrete_map=GENERO_COLORES,
             text="Porcentaje", custom_data=["Cantidad"],
         )
-        _poblacion_en_tono_oscuro(fig, data, "Género", GENERO_COLORES)
+        _poblacion_destacada(fig, data, "Género", GENERO_COLORES, colores_poblacion=GENERO_COLORES_POBLACION)
         fig.update_traces(
-            texttemplate="%{text:.0f}%", textposition="inside",
+            # Barra con el valor sin redondear (cada fila suma 100%); etiqueta con 1 decimal.
+            texttemplate="%{text:.1f}%", textposition="inside",
             # Detalle de personas (ponderado) deshabilitado a pedido; customdata queda
             # disponible para reactivarlo agregando de nuevo el <span> con %{customdata[0]}.
-            hovertemplate="%{y}<br>Porcentaje: %{x:.0f}%",
+            hovertemplate="%{y}<br>Porcentaje: %{x:.1f}%",
         )
         # Leyenda horizontal arriba y sin título de eje X (los valores ya llevan %): así las barras
-        # usan todo el ancho y no queda espacio en blanco entre el gráfico y la nota al pie. Las
-        # etiquetas que no entran en segmentos muy finos se ocultan en lugar de achicarse o rotarse.
+        # usan todo el ancho. Todas las barras llevan su % adentro; en segmentos muy finos Plotly
+        # achica la etiqueta para que entre.
         fig.update_layout(
             yaxis_title=None, xaxis_title=None,
             legend=dict(orientation="h", yanchor="bottom", y=1.0, xanchor="left", x=0, title_text=None),
-            uniformtext=dict(minsize=9, mode="hide"),
             # Margen derecho para que entre la etiqueta "100%" del eje.
             margin=dict(t=10, b=10, l=10, r=30),
         )
@@ -156,7 +163,7 @@ def _descendencia_por_pais(df):
             color_discrete_map=colores,
             text="Porcentaje", custom_data=["Cantidad"],
         )
-        _poblacion_en_tono_oscuro(fig, data, "Descendencia", colores, agrupado=True)
+        _poblacion_destacada(fig, data, "Descendencia", colores, agrupado=True)
         fig.update_traces(
             texttemplate="%{text:.0f}%", textposition="outside",
             # Detalle de personas (ponderado) deshabilitado a pedido; customdata queda
