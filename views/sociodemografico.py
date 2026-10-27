@@ -29,47 +29,17 @@ GENERO_ETIQUETAS = {
     "Prefiero no responder": "Prefiero no contestar",
 }
 GENERO_ORDEN = list(GENERO_ETIQUETAS.values())
-# En los gráficos según país de origen, cada categoría usa una familia de color del tema (que trae
-# una versión clara y otra oscura de cada color): la fila Población migrante total va con la
-# versión oscura y los países con la clara, para que la población resalte sin cambiar la estética.
-FAMILIAS_DE_COLOR = [  # (clara, oscura)
-    (COLORS["orange_1"], COLORS["orange_2"]),
-    (COLORS["blue"], COLORS["blue_dark"]),
-    (COLORS["yellow_1"], COLORS["yellow_2"]),
-    (COLORS["blue_pale"], COLORS["blue_accent"]),
-]
+# En los gráficos según país de origen, la fila Población migrante total usa los mismos colores que
+# los países; se distingue por ir primera y en negrita en el eje Y.
+COLORES_CATEGORIAS = [COLORS["orange_1"], COLORS["blue"], COLORS["yellow_1"], COLORS["blue_pale"]]
+GENERO_COLORES = dict(zip(GENERO_ORDEN, COLORES_CATEGORIAS))
 
-
-def _colores_por_categoria(categorias):
-    """Colores de cada categoría para la fila de población (versión oscura) y para los países
-    (versión clara)."""
-    poblacion = {categoria: oscura for categoria, (_, oscura) in zip(categorias, FAMILIAS_DE_COLOR)}
-    paises = {categoria: clara for categoria, (clara, _) in zip(categorias, FAMILIAS_DE_COLOR)}
-    return poblacion, paises
-
-
-GENERO_COLORES_POBLACION, GENERO_COLORES = _colores_por_categoria(GENERO_ORDEN)
-
-
-def _poblacion_destacada(fig, data, columna_color, colores_poblacion, agrupado=False):
-    """Redibuja la fila de Población migrante total con `colores_poblacion` (los colores principales
-    de la paleta), para que se distinga de las nacionalidades. Va en trazas aparte,
-    sin entrada de leyenda (así la leyenda muestra el color de las nacionalidades). En barras
-    agrupadas (`agrupado=True`) cada traza va en el mismo grupo que su categoría (`offsetgroup`)
-    para respetar su posición; en barras apiladas no hace falta y rompería el apilado.
-    `fig` debe haberse armado sin la fila de población."""
-    poblacion = data[data["pais_nacimiento_var"] == POBLACION_TOTAL_LABEL]
-    for trace in fig.data:
-        trace.legendgroup = trace.name
-    for categoria, color in colores_poblacion.items():
-        fila = poblacion[poblacion[columna_color] == categoria]
-        if fila.empty:
-            continue
-        fig.add_bar(
-            x=fila["Porcentaje"], y=fila["pais_nacimiento_var"], orientation="h",
-            marker_color=color, name=categoria, legendgroup=categoria,
-            offsetgroup=categoria if agrupado else None, showlegend=False, text=fila["Porcentaje"],
-        )
+# Etiquetas del eje Y (países) y de los % en negrita, un punto más grandes que el resto del gráfico.
+TAMANIO_EJE_PAISES = 10
+TEXTO_PORCENTAJE = "<b>%{text:.1f}%</b>"
+# Detalle flotante sin el nombre de la categoría (ya está en la leyenda): `<extra></extra>` quita
+# el recuadro con el nombre de la traza que Plotly agrega por defecto.
+HOVER_POR_PAIS = "%{y}<br>Porcentaje: %{x:.1f}%<extra></extra>"
 
 
 def _nota_ponderacion_por_pais(df, columns_col):
@@ -123,20 +93,18 @@ def _pais_por_genero(df):
         data = data.merge(data_cantidad, on=["pais_nacimiento_var", "Género"])
         data["Género"] = data["Género"].map(GENERO_ETIQUETAS)
         fig = px.bar(
-            data[data["pais_nacimiento_var"] != POBLACION_TOTAL_LABEL],
-            x="Porcentaje", y="pais_nacimiento_var", color="Género",
+            data, x="Porcentaje", y="pais_nacimiento_var", color="Género",
             orientation="h", barmode="stack",
             category_orders={"pais_nacimiento_var": orden, "Género": GENERO_ORDEN},
             color_discrete_map=GENERO_COLORES,
             text="Porcentaje", custom_data=["Cantidad"],
         )
-        _poblacion_destacada(fig, data, "Género", GENERO_COLORES_POBLACION)
         fig.update_traces(
             # Barra con el valor sin redondear (cada fila suma 100%); etiqueta con 1 decimal.
-            texttemplate="%{text:.1f}%", textposition="inside",
+            texttemplate=TEXTO_PORCENTAJE, textposition="inside",
             # Detalle de personas (ponderado) deshabilitado a pedido; customdata queda
             # disponible para reactivarlo agregando de nuevo el <span> con %{customdata[0]}.
-            hovertemplate="%{y}<br>Porcentaje: %{x:.1f}%",
+            hovertemplate=HOVER_POR_PAIS,
         )
         # Leyenda horizontal arriba y sin título de eje X (los valores ya llevan %): así las barras
         # usan todo el ancho. Todas las barras llevan su % adentro; en segmentos muy finos Plotly
@@ -153,7 +121,8 @@ def _pais_por_genero(df):
         # que Población migrante total quede siempre en la primera fila, arriba de todo.
         fig.update_yaxes(
             categoryorder="array", categoryarray=orden[::-1],
-            tickmode="array", tickvals=orden, ticktext=_ticktext_con_referencia(orden), tickfont=dict(size=9),
+            tickmode="array", tickvals=orden, ticktext=_ticktext_con_referencia(orden),
+            tickfont=dict(size=TAMANIO_EJE_PAISES),
         )
         st.plotly_chart(fig, width="stretch")
         _nota_ponderacion_por_pais(df, "genero_agrup")
@@ -173,21 +142,19 @@ def _descendencia_por_pais(df):
         data = tabla.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Descendencia", value_name="Porcentaje")
         data_cantidad = conteo.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Descendencia", value_name="Cantidad")
         data = data.merge(data_cantidad, on=["pais_nacimiento_var", "Descendencia"])
-        colores_poblacion, colores = _colores_por_categoria(list(tabla.columns))
+        colores = dict(zip(tabla.columns, COLORES_CATEGORIAS))
         fig = px.bar(
-            data[data["pais_nacimiento_var"] != POBLACION_TOTAL_LABEL],
-            x="Porcentaje", y="pais_nacimiento_var", color="Descendencia",
+            data, x="Porcentaje", y="pais_nacimiento_var", color="Descendencia",
             orientation="h", barmode="group",
             category_orders={"pais_nacimiento_var": orden, "Descendencia": list(colores)},
             color_discrete_map=colores,
             text="Porcentaje", custom_data=["Cantidad"],
         )
-        _poblacion_destacada(fig, data, "Descendencia", colores_poblacion, agrupado=True)
         fig.update_traces(
-            texttemplate="%{text:.1f}%", textposition="outside",
+            texttemplate=TEXTO_PORCENTAJE, textposition="outside",
             # Detalle de personas (ponderado) deshabilitado a pedido; customdata queda
             # disponible para reactivarlo agregando de nuevo el <span> con %{customdata[0]}.
-            hovertemplate="%{y}<br>Porcentaje: %{x:.1f}%",
+            hovertemplate=HOVER_POR_PAIS,
         )
         # Mismo criterio que el gráfico de género: leyenda horizontal arriba y sin título de eje X,
         # para que las barras usen todo el ancho y no quede espacio en blanco antes de la nota.
@@ -202,7 +169,8 @@ def _descendencia_por_pais(df):
         # que Población migrante total quede siempre en la primera fila, arriba de todo.
         fig.update_yaxes(
             categoryorder="array", categoryarray=orden[::-1],
-            tickmode="array", tickvals=orden, ticktext=_ticktext_con_referencia(orden), tickfont=dict(size=9),
+            tickmode="array", tickvals=orden, ticktext=_ticktext_con_referencia(orden),
+            tickfont=dict(size=TAMANIO_EJE_PAISES),
         )
         st.plotly_chart(fig, width="stretch")
         _nota_ponderacion_por_pais(df, "descendencia")
