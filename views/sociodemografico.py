@@ -27,23 +27,22 @@ GENERO_ETIQUETAS = {
     "Prefiero no responder": "Prefiero no contestar",
 }
 GENERO_ORDEN = list(GENERO_ETIQUETAS.values())
-# En los gráficos según país de origen, la fila Población migrante total usa los colores
-# principales de la paleta y los países la variante más clara de cada uno dentro de la misma
-# paleta, para que la fila de población resalte sin cambiar la estética.
-COLORES_PRINCIPALES = [COLORS["orange_1"], COLORS["blue"], COLORS["yellow_2"], COLORS["blue_accent"]]
-VARIANTE_CLARA = {
-    COLORS["orange_1"]: COLORS["yellow_2"],
-    COLORS["blue"]: COLORS["blue_accent"],
-    COLORS["yellow_2"]: COLORS["yellow_1"],
-    COLORS["blue_accent"]: COLORS["blue_pale"],
-}
+# En los gráficos según país de origen, cada categoría usa una familia de color del tema (que trae
+# una versión clara y otra oscura de cada color): la fila Población migrante total va con la
+# versión oscura y los países con la clara, para que la población resalte sin cambiar la estética.
+FAMILIAS_DE_COLOR = [  # (clara, oscura)
+    (COLORS["orange_1"], COLORS["orange_2"]),
+    (COLORS["blue"], COLORS["blue_dark"]),
+    (COLORS["yellow_1"], COLORS["yellow_2"]),
+    (COLORS["blue_pale"], COLORS["blue_accent"]),
+]
 
 
 def _colores_por_categoria(categorias):
-    """Colores de cada categoría para la fila de población (principales) y para los países (la
-    variante clara de cada uno)."""
-    poblacion = dict(zip(categorias, COLORES_PRINCIPALES))
-    paises = {categoria: VARIANTE_CLARA[color] for categoria, color in poblacion.items()}
+    """Colores de cada categoría para la fila de población (versión oscura) y para los países
+    (versión clara)."""
+    poblacion = {categoria: oscura for categoria, (_, oscura) in zip(categorias, FAMILIAS_DE_COLOR)}
+    paises = {categoria: clara for categoria, (clara, _) in zip(categorias, FAMILIAS_DE_COLOR)}
     return poblacion, paises
 
 
