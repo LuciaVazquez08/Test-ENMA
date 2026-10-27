@@ -10,7 +10,6 @@ from data_utils import (
     aplicar_tipografia,
     formatear_n,
     filtro_edicion,
-    grafico_barras,
     iniciar_filtros,
     load_data,
     nota_ponderacion,
@@ -21,7 +20,16 @@ PERIODO_RESIDENCIA_ORDEN = ["Hasta 5 años", "Entre 5 y 9 años", "Más de 10 a�
 
 POBLACION_TOTAL_LABEL = "Población migrante total"
 
+DESCENDENCIA_ORDEN = ["Afrodescendiente", "Descendencia Asiática", "Descendencia Indígena", "Ninguna de las anteriores"]
 DESCENDENCIA_SIN_GRAFICAR = ["Ninguna de las anteriores"]
+
+# Orden fijo de las lenguas (igual en ambas ediciones), con "Otro" al final, y un color de la paleta
+# para cada una (gris para "Otro").
+IDIOMA_ORDEN = [
+    "Español / Castellano", "Guaraní", "Portugués", "Quechua",
+    "Creole haitiano", "Wolof", "Francés", "Otro",
+]
+IDIOMA_COLORES = dict(zip(IDIOMA_ORDEN, CHART_SEQUENCE))
 
 # Orden fijo de las categorías de género (leyenda y apilado) y su etiqueta en los gráficos.
 GENERO_ETIQUETAS = {
@@ -84,102 +92,119 @@ def _ticktext_con_referencia(orden):
     return [f"<b>{c}</b>" if c == POBLACION_TOTAL_LABEL else c for c in orden]
 
 
-def _pais_por_genero(df):
-    with st.container(border=True, key="grafico_pais_genero"):
-        st.subheader("Composición por género según país de origen")
-        tabla, conteo, orden = _tabla_ponderada(
-            df, "pais_nacimiento_var", "genero_agrup", POBLACION_TOTAL_LABEL,
-        )
-        data = tabla.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Género", value_name="Porcentaje")
-        data_cantidad = conteo.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Género", value_name="Cantidad")
-        data = data.merge(data_cantidad, on=["pais_nacimiento_var", "Género"])
-        data["Género"] = data["Género"].map(GENERO_ETIQUETAS)
+def _datos_por_pais(df, columna, sin_graficar=()):
+    """Tabla larga (país, categoría, %) lista para graficar, con la fila de Población migrante
+    total y el orden de filas de `_tabla_ponderada`. Las categorías de `sin_graficar` cuentan en el
+    total de cada fila (los % siguen siendo sobre todas las personas del país) pero no se grafican."""
+    tabla, conteo, orden = _tabla_ponderada(df, "pais_nacimiento_var", columna, POBLACION_TOTAL_LABEL)
+    tabla = tabla.drop(columns=list(sin_graficar), errors="ignore")
+    conteo = conteo.drop(columns=list(sin_graficar), errors="ignore")
+    data = tabla.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Categoría", value_name="Porcentaje")
+    data_cantidad = conteo.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Categoría", value_name="Cantidad")
+    return data.merge(data_cantidad, on=["pais_nacimiento_var", "Categoría"]), orden
+
+
+def _formato_por_pais(fig, orden, rango_max):
+    """Formato común de los gráficos según país de origen: leyenda horizontal arriba, sin títulos de
+    eje (los valores ya llevan %), escala fija de 0 a `rango_max` con marcas cada 25%, % en negrita
+    con 1 decimal, detalle flotante sin la categoría, y Población migrante total en la primera fila
+    y en negrita."""
+    fig.update_traces(
+        texttemplate=TEXTO_PORCENTAJE,
+        # Detalle de personas (ponderado) deshabilitado a pedido; customdata queda
+        # disponible para reactivarlo agregando de nuevo el <span> con %{customdata[0]}.
+        hovertemplate=HOVER_POR_PAIS,
+        # Deja ver las etiquetas que quedan pasando el máximo de la escala.
+        cliponaxis=False,
+    )
+    fig.update_layout(
+        yaxis_title=None, xaxis_title=None,
+        legend=dict(orientation="h", yanchor="bottom", y=1.0, xanchor="left", x=0, title_text=None),
+        # Margen derecho para que entre la última etiqueta del eje.
+        margin=dict(t=10, b=10, l=10, r=30),
+    )
+    marcas = list(range(0, rango_max + 1, 25))
+    fig.update_xaxes(range=[0, rango_max + 1], tickvals=marcas, ticktext=[f"{m}%" for m in marcas])
+    aplicar_tipografia(fig)
+    # En barras horizontales Plotly dibuja la primera categoría abajo: se invierte `orden` para
+    # que Población migrante total quede siempre en la primera fila, arriba de todo.
+    fig.update_yaxes(
+        categoryorder="array", categoryarray=orden[::-1],
+        tickmode="array", tickvals=orden, ticktext=_ticktext_con_referencia(orden),
+        tickfont=dict(size=TAMANIO_EJE_PAISES),
+    )
+
+
+def _apilado_por_pais(df, columna, titulo, key, categorias, colores, etiquetas=None):
+    """Barras apiladas al 100% por país (una fila por país y la de Población migrante total arriba),
+    con las categorías en el orden fijo de `categorias`. Las barras usan el valor sin redondear (cada
+    fila suma 100%) y la etiqueta va adentro con 1 decimal; en segmentos muy finos Plotly la achica."""
+    with st.container(border=True, key=key):
+        st.subheader(titulo)
+        data, orden = _datos_por_pais(df, columna)
+        if etiquetas:
+            data["Categoría"] = data["Categoría"].map(etiquetas)
         fig = px.bar(
-            data, x="Porcentaje", y="pais_nacimiento_var", color="Género",
+            data, x="Porcentaje", y="pais_nacimiento_var", color="Categoría",
             orientation="h", barmode="stack",
-            category_orders={"pais_nacimiento_var": orden, "Género": GENERO_ORDEN},
-            color_discrete_map=GENERO_COLORES,
-            text="Porcentaje", custom_data=["Cantidad"],
-        )
-        fig.update_traces(
-            # Barra con el valor sin redondear (cada fila suma 100%); etiqueta con 1 decimal.
-            texttemplate=TEXTO_PORCENTAJE, textposition="inside",
-            # Detalle de personas (ponderado) deshabilitado a pedido; customdata queda
-            # disponible para reactivarlo agregando de nuevo el <span> con %{customdata[0]}.
-            hovertemplate=HOVER_POR_PAIS,
-        )
-        # Leyenda horizontal arriba y sin título de eje X (los valores ya llevan %): así las barras
-        # usan todo el ancho. Todas las barras llevan su % adentro; en segmentos muy finos Plotly
-        # achica la etiqueta para que entre.
-        fig.update_layout(
-            yaxis_title=None, xaxis_title=None,
-            legend=dict(orientation="h", yanchor="bottom", y=1.0, xanchor="left", x=0, title_text=None),
-            # Margen derecho para que entre la etiqueta "100%" del eje.
-            margin=dict(t=10, b=10, l=10, r=30),
-        )
-        fig.update_xaxes(range=[0, 101], tickvals=[0, 25, 50, 75, 100], ticktext=["0%", "25%", "50%", "75%", "100%"])
-        aplicar_tipografia(fig)
-        # En barras horizontales Plotly dibuja la primera categoría abajo: se invierte `orden` para
-        # que Población migrante total quede siempre en la primera fila, arriba de todo.
-        fig.update_yaxes(
-            categoryorder="array", categoryarray=orden[::-1],
-            tickmode="array", tickvals=orden, ticktext=_ticktext_con_referencia(orden),
-            tickfont=dict(size=TAMANIO_EJE_PAISES),
-        )
-        st.plotly_chart(fig, width="stretch")
-        _nota_ponderacion_por_pais(df, "genero_agrup")
-
-
-def _descendencia_por_pais(df):
-    with st.container(border=True, key="grafico_descendencia"):
-        st.subheader("Pertenencia afrodescendiente y otras según país de origen")
-        tabla, conteo, orden = _tabla_ponderada(
-            df, "pais_nacimiento_var", "descendencia", POBLACION_TOTAL_LABEL,
-        )
-        # "Ninguna de las anteriores" se calcula (cuenta en el total de cada fila, así los % siguen
-        # siendo sobre todas las personas del país) pero no se grafica: es la categoría mayoritaria
-        # y aplastaba la escala del resto.
-        tabla = tabla.drop(columns=DESCENDENCIA_SIN_GRAFICAR, errors="ignore")
-        conteo = conteo.drop(columns=DESCENDENCIA_SIN_GRAFICAR, errors="ignore")
-        data = tabla.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Descendencia", value_name="Porcentaje")
-        data_cantidad = conteo.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Descendencia", value_name="Cantidad")
-        data = data.merge(data_cantidad, on=["pais_nacimiento_var", "Descendencia"])
-        colores = dict(zip(tabla.columns, COLORES_CATEGORIAS))
-        fig = px.bar(
-            data, x="Porcentaje", y="pais_nacimiento_var", color="Descendencia",
-            orientation="h", barmode="group",
-            category_orders={"pais_nacimiento_var": orden, "Descendencia": list(colores)},
+            category_orders={"pais_nacimiento_var": orden, "Categoría": categorias},
             color_discrete_map=colores,
             text="Porcentaje", custom_data=["Cantidad"],
         )
-        fig.update_traces(
-            texttemplate=TEXTO_PORCENTAJE, textposition="outside",
-            # Detalle de personas (ponderado) deshabilitado a pedido; customdata queda
-            # disponible para reactivarlo agregando de nuevo el <span> con %{customdata[0]}.
-            hovertemplate=HOVER_POR_PAIS,
-        )
-        # Mismo criterio que el gráfico de género: leyenda horizontal arriba y sin título de eje X,
-        # para que las barras usen todo el ancho y no quede espacio en blanco antes de la nota.
-        fig.update_layout(
-            yaxis_title=None, xaxis_title=None,
-            legend=dict(orientation="h", yanchor="bottom", y=1.0, xanchor="left", x=0, title_text=None),
-            margin=dict(t=10, b=10, l=10, r=30),
-        )
-        aplicar_tipografia(fig)
-        # Escala fija de 0 a 75% con marcas cada 25%: el valor más alto es 73,3% (Haití, 2020) y una
-        # escala fija permite comparar entre ediciones. cliponaxis=False deja ver las etiquetas
-        # que quedan pasando el 75%.
-        fig.update_xaxes(range=[0, 75], tickvals=[0, 25, 50, 75], ticktext=["0%", "25%", "50%", "75%"])
-        fig.update_traces(cliponaxis=False)
-        # En barras horizontales Plotly dibuja la primera categoría abajo: se invierte `orden` para
-        # que Población migrante total quede siempre en la primera fila, arriba de todo.
-        fig.update_yaxes(
-            categoryorder="array", categoryarray=orden[::-1],
-            tickmode="array", tickvals=orden, ticktext=_ticktext_con_referencia(orden),
-            tickfont=dict(size=TAMANIO_EJE_PAISES),
-        )
+        fig.update_traces(textposition="inside")
+        _formato_por_pais(fig, orden, rango_max=100)
         st.plotly_chart(fig, width="stretch")
-        _nota_ponderacion_por_pais(df, "descendencia")
+        _nota_ponderacion_por_pais(df, columna)
+
+
+def _agrupado_por_pais(df, columna, titulo, key, categorias, rango_max, sin_graficar=()):
+    """Barras agrupadas por país (una barra por categoría, en el orden fijo de `categorias`), con la
+    fila de Población migrante total arriba y la etiqueta afuera de cada barra."""
+    with st.container(border=True, key=key):
+        st.subheader(titulo)
+        data, orden = _datos_por_pais(df, columna, sin_graficar)
+        categorias = [c for c in categorias if c not in sin_graficar]
+        fig = px.bar(
+            data, x="Porcentaje", y="pais_nacimiento_var", color="Categoría",
+            orientation="h", barmode="group",
+            category_orders={"pais_nacimiento_var": orden, "Categoría": categorias},
+            color_discrete_map=dict(zip(categorias, COLORES_CATEGORIAS)),
+            text="Porcentaje", custom_data=["Cantidad"],
+        )
+        fig.update_traces(textposition="outside")
+        _formato_por_pais(fig, orden, rango_max)
+        st.plotly_chart(fig, width="stretch")
+        _nota_ponderacion_por_pais(df, columna)
+
+
+def _pais_por_genero(df):
+    _apilado_por_pais(
+        df, "genero_agrup", "Composición por género según país de origen", "grafico_pais_genero",
+        GENERO_ORDEN, GENERO_COLORES, etiquetas=GENERO_ETIQUETAS,
+    )
+
+
+def _descendencia_por_pais(df):
+    # "Ninguna de las anteriores" es la categoría mayoritaria y aplastaba la escala del resto. El
+    # valor más alto que queda es 73,3% (Haití, 2020), así que la escala va de 0 a 75%.
+    _agrupado_por_pais(
+        df, "descendencia", "Pertenencia afrodescendiente y otras según país de origen", "grafico_descendencia",
+        DESCENDENCIA_ORDEN, rango_max=75, sin_graficar=DESCENDENCIA_SIN_GRAFICAR,
+    )
+
+
+def _idioma_por_pais(df):
+    _apilado_por_pais(
+        df, "idioma_var", "Lenguas habladas según país de origen", "grafico_pais_idioma",
+        IDIOMA_ORDEN, IDIOMA_COLORES,
+    )
+
+
+def _residencia_por_pais(df):
+    _agrupado_por_pais(
+        df, "periodo_residencia", "Años de residencia según país de origen", "grafico_pais_residencia",
+        PERIODO_RESIDENCIA_ORDEN, rango_max=100,
+    )
 
 
 def _region_por_edad(df):
@@ -291,10 +316,10 @@ def render():
 
     col3, col4 = st.columns(2)
     with col3:
-        _region_por_edad(df)
+        _idioma_por_pais(df)
     with col4:
-        grafico_barras(df, "idioma_var", "Distribución por lenguas habladas", horizontal=True, columna_peso=PESO_TOTAL)
+        _residencia_por_pais(df)
 
     col5, _ = st.columns(2)
     with col5:
-        grafico_barras(df, "periodo_residencia", "Distribución por años de residencia", orden=PERIODO_RESIDENCIA_ORDEN, columna_peso=PESO_TOTAL)
+        _region_por_edad(df)
