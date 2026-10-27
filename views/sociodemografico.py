@@ -121,10 +121,17 @@ def _pais_por_genero(df):
             # disponible para reactivarlo agregando de nuevo el <span> con %{customdata[0]}.
             hovertemplate="%{y}<br>Porcentaje: %{x:.0f}%",
         )
+        # Leyenda horizontal arriba y sin título de eje X (los valores ya llevan %): así las barras
+        # usan todo el ancho y no queda espacio en blanco entre el gráfico y la nota al pie. Las
+        # etiquetas que no entran en segmentos muy finos se ocultan en lugar de achicarse o rotarse.
         fig.update_layout(
-            yaxis_title=None, xaxis_title="Porcentaje (%)",
-            margin=dict(t=25, b=25, l=15, r=15),
+            yaxis_title=None, xaxis_title=None,
+            legend=dict(orientation="h", yanchor="bottom", y=1.0, xanchor="left", x=0, title_text=None),
+            uniformtext=dict(minsize=9, mode="hide"),
+            # Margen derecho para que entre la etiqueta "100%" del eje.
+            margin=dict(t=10, b=10, l=10, r=30),
         )
+        fig.update_xaxes(range=[0, 101], tickvals=[0, 25, 50, 75, 100], ticktext=["0%", "25%", "50%", "75%", "100%"])
         aplicar_tipografia(fig)
         fig.update_yaxes(tickmode="array", tickvals=orden, ticktext=_ticktext_con_referencia(orden), tickfont=dict(size=9))
         st.plotly_chart(fig, width="stretch")
