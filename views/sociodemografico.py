@@ -8,18 +8,33 @@ from data_utils import (
     aplicar_tipografia,
     formatear_n,
     filtro_edicion,
-    filtro_nacionalidad,
-    filtro_region,
     grafico_barras,
     iniciar_filtros,
     load_data,
     nota_ponderacion,
 )
-from enma_palette import CHART_SEQUENCE
+from enma_palette import CHART_SEQUENCE, COLORS
 
 PERIODO_RESIDENCIA_ORDEN = ["Hasta 5 años", "Entre 5 y 9 años", "Más de 10 años"]
 
 POBLACION_TOTAL_LABEL = "Población migrante total"
+
+# Orden fijo de las categorías de género (leyenda y apilado) y su etiqueta en los gráficos.
+GENERO_ETIQUETAS = {
+    "Mujer": "Mujer",
+    "Varón": "Varón",
+    "Otro género": "Otro",
+    "Prefiero no responder": "Prefiero no contestar",
+}
+GENERO_ORDEN = list(GENERO_ETIQUETAS.values())
+GENERO_COLORES = dict(zip(GENERO_ORDEN, [COLORS["orange_1"], COLORS["blue"], COLORS["yellow_2"], COLORS["blue_accent"]]))
+
+
+def _oscurecer(color_hex, factor=0.35):
+    """Mismo tono, más oscuro: mezcla el color con negro en la proporción `factor` (0.35 equivale
+    a unos 2-3 tonos más oscuros)."""
+    r, g, b = (int(color_hex[i:i + 2], 16) for i in (1, 3, 5))
+    return "#{:02X}{:02X}{:02X}".format(*(round(c * (1 - factor)) for c in (r, g, b)))
 
 
 def _nota_ponderacion_por_pais(df, columns_col):
@@ -69,13 +84,31 @@ def _pais_por_genero(df):
         data = tabla.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Género", value_name="Porcentaje")
         data_cantidad = conteo.reset_index().melt(id_vars="pais_nacimiento_var", var_name="Género", value_name="Cantidad")
         data = data.merge(data_cantidad, on=["pais_nacimiento_var", "Género"])
+        data["Género"] = data["Género"].map(GENERO_ETIQUETAS)
         fig = px.bar(
-            data, x="Porcentaje", y="pais_nacimiento_var", color="Género",
+            data[data["pais_nacimiento_var"] != POBLACION_TOTAL_LABEL],
+            x="Porcentaje", y="pais_nacimiento_var", color="Género",
             orientation="h", barmode="stack",
-            category_orders={"pais_nacimiento_var": orden},
-            color_discrete_sequence=CHART_SEQUENCE,
+            category_orders={"pais_nacimiento_var": orden, "Género": GENERO_ORDEN},
+            color_discrete_map=GENERO_COLORES,
             text="Porcentaje", custom_data=["Cantidad"],
         )
+        # La fila de Población migrante total va con los mismos colores pero más oscuros, para que
+        # se distinga de las nacionalidades sin cambiar la estética del gráfico. Va en trazas
+        # aparte, sin entrada de leyenda, para que la leyenda muestre el color de las nacionalidades.
+        poblacion = data[data["pais_nacimiento_var"] == POBLACION_TOTAL_LABEL]
+        for genero in GENERO_ORDEN:
+            fila = poblacion[poblacion["Género"] == genero]
+            if fila.empty:
+                continue
+            fig.add_bar(
+                x=fila["Porcentaje"], y=fila["pais_nacimiento_var"], orientation="h",
+                marker_color=_oscurecer(GENERO_COLORES[genero]), name=genero,
+                legendgroup=genero, showlegend=False, text=fila["Porcentaje"],
+            )
+        for trace in fig.data:
+            if trace.showlegend is not False:
+                trace.legendgroup = trace.name
         fig.update_traces(
             texttemplate="%{text:.0f}%", textposition="inside",
             # Detalle de personas (ponderado) deshabilitado a pedido; customdata queda
@@ -214,9 +247,9 @@ def render():
     df_completo = df
     contador = iniciar_filtros()
 
-    mask = filtro_edicion(df, "socio_edicion", reset_keys=["socio_nacionalidad"])
-    mask &= filtro_nacionalidad(df, "socio_nacionalidad", df_opciones=df[mask])
-    mask &= filtro_region(df, "socio_region")
+    # Solo el filtro de año, que no afecta la sección "Composición de cada edición" (usa la base
+    # completa, df_completo).
+    mask = filtro_edicion(df, "socio_edicion")
 
     df = aplicar_filtros(df, mask, contador)
 
@@ -231,10 +264,12 @@ def render():
     with col2:
         _descendencia_por_pais(df)
 
-    col3, col4, col5 = st.columns(3)
+    col3, col4 = st.columns(2)
     with col3:
         _region_por_edad(df)
     with col4:
         grafico_barras(df, "idioma_var", "Distribución por lenguas habladas", horizontal=True, columna_peso=PESO_TOTAL)
+
+    col5, _ = st.columns(2)
     with col5:
         grafico_barras(df, "periodo_residencia", "Distribución por años de residencia", orden=PERIODO_RESIDENCIA_ORDEN, columna_peso=PESO_TOTAL)
