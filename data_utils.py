@@ -30,10 +30,9 @@ TEXTO_PORCENTAJE_ENTERO = "<b>%{text:.0f}%</b>"
 # Dimensiones de cruce que se eligen en el panel lateral de las secciones (ver `filtro_cruce`).
 SIN_CRUCE = "Sin cruce"
 POBLACION_TOTAL_LABEL = "Población migrante total"
-TODO_EL_PAIS_LABEL = "Todo el país"
 PERIODO_RESIDENCIA_ORDEN = ["Hasta 5 años", "Entre 5 y 9 años", "Más de 10 años"]
 # "Sin clasificar" (57 casos de 2020 de Provincia de Buenos Aires sin localidad asignable) no es una
-# región: no se muestra como fila del cruce, pero cuenta en "Todo el país".
+# región: no se muestra como fila del cruce, pero cuenta en la fila de Población migrante total.
 REGIONES_ORDEN = ["AMBA", "Región Pampeana", "Cuyo", "NEA", "NOA", "Patagonia"]
 CRUCES = {
     # País de origen: cada país con el ponderador intra nacionalidad y la fila de población total
@@ -50,7 +49,7 @@ CRUCES = {
         fuera="sin dato de tiempo de residencia",
     ),
     "Región": dict(
-        columna="region", nombre="región de residencia", total=TODO_EL_PAIS_LABEL,
+        columna="region", nombre="región de residencia", total=POBLACION_TOTAL_LABEL,
         peso_filas=PESO_TOTAL, orden=REGIONES_ORDEN,
         nota="Datos ponderados con el ponderador general",
         fuera="de Provincia de Buenos Aires sin región asignable (\"Sin clasificar\")",
