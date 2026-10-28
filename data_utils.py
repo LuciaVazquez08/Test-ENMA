@@ -32,7 +32,9 @@ SIN_CRUCE = "Sin cruce"
 POBLACION_TOTAL_LABEL = "Población migrante total"
 TODO_EL_PAIS_LABEL = "Todo el país"
 PERIODO_RESIDENCIA_ORDEN = ["Hasta 5 años", "Entre 5 y 9 años", "Más de 10 años"]
-REGIONES_ORDEN = ["AMBA", "Región Pampeana", "Cuyo", "NEA", "NOA", "Patagonia", "Sin clasificar"]
+# "Sin clasificar" (57 casos de 2020 de Provincia de Buenos Aires sin localidad asignable) no es una
+# región: no se muestra como fila del cruce, pero cuenta en "Todo el país".
+REGIONES_ORDEN = ["AMBA", "Región Pampeana", "Cuyo", "NEA", "NOA", "Patagonia"]
 CRUCES = {
     # País de origen: cada país con el ponderador intra nacionalidad y la fila de población total
     # con el general, como en la página sociodemográfica.
@@ -42,14 +44,16 @@ CRUCES = {
         nota="Países ponderados por nacionalidad; Población migrante total ponderada con el ponderador general",
     ),
     "Tiempo de residencia": dict(
-        columna="periodo_residencia", nombre="tiempo de residencia", total=None,
+        columna="periodo_residencia", nombre="tiempo de residencia", total=POBLACION_TOTAL_LABEL,
         peso_filas=PESO_TOTAL, orden=PERIODO_RESIDENCIA_ORDEN,
         nota="Datos ponderados con el ponderador general",
+        fuera="sin dato de tiempo de residencia",
     ),
     "Región": dict(
         columna="region", nombre="región de residencia", total=TODO_EL_PAIS_LABEL,
         peso_filas=PESO_TOTAL, orden=REGIONES_ORDEN,
         nota="Datos ponderados con el ponderador general",
+        fuera="de Provincia de Buenos Aires sin región asignable (\"Sin clasificar\")",
     ),
 }
 
@@ -193,7 +197,7 @@ def filtro_cruce(df: pd.DataFrame, key: str) -> dict | None:
     else:
         # Países de menor a mayor cantidad de casos, como en la página sociodemográfica.
         filas = df.groupby(cruce["columna"])[PESO_NACIONALIDAD].sum().sort_values().index.tolist()
-    cruce["filas"] = ([cruce["total"]] if cruce["total"] else []) + filas
+    cruce["filas"] = [cruce["total"]] + filas
     st.session_state["_cruce"] = cruce
     return cruce
 
@@ -222,6 +226,20 @@ def _ponderados_por_fila(df: pd.DataFrame, cruce: dict, valores) -> dict:
     return resultado
 
 
+def _nota_cruce(datos: pd.DataFrame, cruce: dict):
+    """Nota al pie de los gráficos cruzados: ponderador, casos que cuentan en la fila de total pero
+    no en ninguna categoría del cruce (si los hay) y N."""
+    categorias = [f for f in cruce["filas"] if f != cruce["total"]]
+    fuera = int((~datos[cruce["columna"]].isin(categorias)).sum())
+    texto = cruce["nota"]
+    if fuera and cruce.get("fuera"):
+        texto += (
+            f". {formatear_n(fuera)} casos {cruce['fuera']} cuentan en {cruce['total']} "
+            "pero no se muestran por separado"
+        )
+    nota_ponderacion(len(datos), texto)
+
+
 def _ejes_cruce(fig, filas: list, total: str | None):
     """Filas del cruce en el eje Y, en el orden de `filas` de arriba hacia abajo (Plotly dibuja la
     primera categoría abajo, por eso se invierte) y con la fila de total en negrita."""
@@ -238,7 +256,7 @@ def _grafico_cruce_simple(df, columna, titulo, orden, cruce):
     decimal, como "Composición por género según país de origen"."""
     with st.container(border=True, key=f"grafico_{columna}"):
         st.subheader(_titulo_cruzado(titulo, cruce))
-        datos = df.dropna(subset=[columna, cruce["columna"]]) if not cruce["total"] else df.dropna(subset=[columna])
+        datos = df.dropna(subset=[columna])
         distribuciones = _ponderados_por_fila(
             datos, cruce,
             lambda sub, peso: sub.groupby(columna)[peso].sum().pipe(lambda c: c / c.sum() * 100),
@@ -271,7 +289,7 @@ def _grafico_cruce_simple(df, columna, titulo, orden, cruce):
         aplicar_tipografia(fig)
         _ejes_cruce(fig, filas, cruce["total"])
         st.plotly_chart(fig, width="stretch")
-        nota_ponderacion(len(datos), cruce["nota"])
+        _nota_cruce(datos, cruce)
 
 
 def _grafico_cruce_multiple(df, opciones, titulo, subtitulo, cruce):
@@ -284,8 +302,6 @@ def _grafico_cruce_multiple(df, opciones, titulo, subtitulo, cruce):
         st.subheader(_titulo_cruzado(titulo, cruce))
         st.caption(f"{NOTA_RESPUESTA_MULTIPLE} {subtitulo}")
         respondieron = df[df[columnas].notna().any(axis=1)]
-        if not cruce["total"]:
-            respondieron = respondieron.dropna(subset=[cruce["columna"]])
 
         def porcentajes(sub, peso):
             return {
@@ -298,9 +314,14 @@ def _grafico_cruce_multiple(df, opciones, titulo, subtitulo, cruce):
             st.info("Sin datos para este filtro.")
             return
         tabla = tabla.loc[[e for _, e in opciones if e in tabla.index]]
+        # La escala de color va de 0 al % más alto de la tabla (no hasta 100%), para que las
+        # diferencias se vean aunque todos los valores sean bajos. El tope es el naranja de la
+        # paleta con un poco de transparencia, así ni la celda máxima queda en el color pleno.
+        naranja = COLORS["orange_1"].lstrip("#")
+        r, g, b = (int(naranja[i:i + 2], 16) for i in (0, 2, 4))
         fig = px.imshow(
-            tabla, aspect="auto", zmin=0, zmax=100,
-            color_continuous_scale=[COLORS["background"], COLORS["orange_1"]],
+            tabla, aspect="auto", zmin=0, zmax=max(tabla.max().max(), 1),
+            color_continuous_scale=[f"rgba({r},{g},{b},0)", f"rgba({r},{g},{b},0.8)"],
         )
         fig.update_traces(
             texttemplate="<b>%{z:.1f}%</b>", textfont=dict(size=TAMANIO_EJE_CRUCE),
@@ -315,7 +336,7 @@ def _grafico_cruce_multiple(df, opciones, titulo, subtitulo, cruce):
         )
         fig.update_yaxes(title=None, tickfont=dict(size=TAMANIO_EJE_CRUCE))
         st.plotly_chart(fig, width="stretch")
-        nota_ponderacion(len(respondieron), cruce["nota"])
+        _nota_cruce(respondieron, cruce)
 
 
 def aplicar_filtros(df: pd.DataFrame, mask: pd.Series, contador) -> pd.DataFrame:
