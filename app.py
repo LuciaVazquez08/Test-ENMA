@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import streamlit as st
 
 from enma_palette import inject_fonts
@@ -18,7 +20,7 @@ from views import (
 
 st.set_page_config(
     page_title="ENMA - Tablero",
-    page_icon="🌎",
+    page_icon=str(Path(__file__).resolve().parent / "assets" / "favicon_enma.png"),
     layout="wide",
 )
 inject_fonts()
